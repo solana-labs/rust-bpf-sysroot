@@ -3,5 +3,3 @@
 Cargo.lock
 .DS_Store
 
-
-src/libcore/*
