@@ -1,0 +1,6 @@
+[submodule "src/stdsimd"]
+	path = src/stdsimd
+	url = https://github.com/rust-lang-nursery/stdsimd.git
+[submodule "src/compiler-builtins"]
+	path = src/compiler-builtins
+	url = git@github.com:solana-labs/compiler-builtins.git
