@@ -11,5 +11,5 @@ matrix:
   allow_failures:
   - rust: nightly
 script:
-- ls
+- ./shellcheck.sh
 #- ./build.sh
