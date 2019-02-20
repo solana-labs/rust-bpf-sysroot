@@ -4847,16 +4847,16 @@ pub fn heapsort<T, F>(v: &mut [T], mut is_less: F)
 // Comparison traits
 //
 
-extern {
-    /// Calls implementation provided memcmp.
-    ///
-    /// Interprets the data as u8.
-    ///
-    /// Returns 0 for equal, < 0 for less than and > 0 for greater
-    /// than.
-    // FIXME(#32610): Return type should be c_int
-    fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
-}
+// extern {
+//     /// Calls implementation provided memcmp.
+//     ///
+//     /// Interprets the data as u8.
+//     ///
+//     /// Returns 0 for equal, < 0 for less than and > 0 for greater
+//     /// than.
+//     // FIXME(#32610): Return type should be c_int
+//     fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
+// }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
@@ -4915,24 +4915,24 @@ impl<A, B> SlicePartialEq<B> for [A]
     }
 }
 
-// Use memcmp for bytewise equality when the types allow
-impl<A> SlicePartialEq<A> for [A]
-    where A: PartialEq<A> + BytewiseEquality
-{
-    fn equal(&self, other: &[A]) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        if self.as_ptr() == other.as_ptr() {
-            return true;
-        }
-        unsafe {
-            let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8,
-                   other.as_ptr() as *const u8, size) == 0
-        }
-    }
-}
+// // Use memcmp for bytewise equality when the types allow
+// impl<A> SlicePartialEq<A> for [A]
+//     where A: PartialEq<A> + BytewiseEquality
+// {
+//     fn equal(&self, other: &[A]) -> bool {
+//         if self.len() != other.len() {
+//             return false;
+//         }
+//         if self.as_ptr() == other.as_ptr() {
+//             return true;
+//         }
+//         unsafe {
+//             let size = mem::size_of_val(self);
+//             memcmp(self.as_ptr() as *const u8,
+//                    other.as_ptr() as *const u8, size) == 0
+//         }
+//     }
+// }
 
 #[doc(hidden)]
 // intermediate trait for specialization of slice's PartialOrd
@@ -4998,24 +4998,24 @@ impl<A> SliceOrd<A> for [A]
     }
 }
 
-// memcmp compares a sequence of unsigned bytes lexicographically.
-// this matches the order we want for [u8], but no others (not even [i8]).
-impl SliceOrd<u8> for [u8] {
-    #[inline]
-    fn compare(&self, other: &[u8]) -> Ordering {
-        let order = unsafe {
-            memcmp(self.as_ptr(), other.as_ptr(),
-                   cmp::min(self.len(), other.len()))
-        };
-        if order == 0 {
-            self.len().cmp(&other.len())
-        } else if order < 0 {
-            Less
-        } else {
-            Greater
-        }
-    }
-}
+// // memcmp compares a sequence of unsigned bytes lexicographically.
+// // this matches the order we want for [u8], but no others (not even [i8]).
+// impl SliceOrd<u8> for [u8] {
+//     #[inline]
+//     fn compare(&self, other: &[u8]) -> Ordering {
+//         let order = unsafe {
+//             memcmp(self.as_ptr(), other.as_ptr(),
+//                    cmp::min(self.len(), other.len()))
+//         };
+//         if order == 0 {
+//             self.len().cmp(&other.len())
+//         } else if order < 0 {
+//             Less
+//         } else {
+//             Greater
+//         }
+//     }
+// }
 
 #[doc(hidden)]
 /// Trait implemented for types that can be compared for equality using
