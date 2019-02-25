@@ -1,16 +1,14 @@
+dist: xenial
 language: rust
 cache: cargo
 rust:
 - stable
-- beta
 - nightly
 os:
 - linux
 - osx
-services: docker
 matrix:
   allow_failures:
   - rust: nightly
 script:
-- ./shellcheck.sh
-#- ./build.sh
+- ./build.sh

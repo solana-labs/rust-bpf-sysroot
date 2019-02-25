@@ -54,14 +54,16 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
     rm -rf rust-bpf
     exit 1
   fi
+  set +e
+  rustup toolchain uninstall bpfsysroot
+  set -e
+  rustup toolchain link bpfsysroot rust-bpf
+  rustup override set bpfsysroot
 fi
 
 set +e
 cargo install xargo
-rustup toolchain uninstall bpfsysroot
 set -e
-rustup toolchain link bpfsysroot rust-bpf
-rustup override set bpfsysroot
 
 git submodule init
 git submodule update
@@ -70,7 +72,7 @@ export XARGO_HOME="$PWD/target/rust-sysroot"
 export XARGO_RUST_SRC="$PWD/src"
 xargo build --target bpfel_unknown_unknown --release -v
 
-# Don't need x86 stuff
+# Don't need native target stuff
 rm -rf ./target/rust-sysroot/lib/rustlib/"$triple"
 
 # Tar for release
