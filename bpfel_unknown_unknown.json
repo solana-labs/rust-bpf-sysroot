@@ -14,9 +14,8 @@
 , "no-builtins": true
 , "panic-strategy": "abort"
 , "relro-level": "off" 
-, "linker": "/Users/jack/workbench/active/solana/sdk/bpf/llvm-native/bin/ld.lld"
+, "linker": "./llvm-native/bin/ld.lld"
 , "pre-link-args": {
-    "ld": [ "-z", "notext", "--Bdynamic", "-shared", "--entry", "entrypoint" ],
     "ld.lld": [ "-z", "notext", "--Bdynamic", "-shared", "--entry", "entrypoint", "bpf.ld" ]
   }
 }

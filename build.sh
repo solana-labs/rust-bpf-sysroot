@@ -10,6 +10,29 @@ else
   triple=x86_64-unknown-linux-gnu
 fi
 
+# Install LLVM
+version=v0.0.8
+if [[ ! -f llvm-native-$machine-$version.md ]]; then
+  (
+    filename=solana-llvm-$machine.tar.bz2
+
+    set -ex
+    rm -rf llvm-native*
+    mkdir -p llvm-native
+    cd llvm-native
+    wget --progress=dot:giga https://github.com/solana-labs/llvm-builder/releases/download/$version/$filename
+    tar -jxf $filename
+    rm -rf $filename
+
+    echo "https://github.com/solana-labs/llvm-builder/releases/tag/$version" > ../llvm-native-$machine-$version.md
+  )
+  exitcode=$?
+  if [[ $exitcode -ne 0 ]]; then
+    rm -rf llvm-native
+    exit 1
+  fi
+fi
+
 # Install Rust BPF
 version=v0.0.1
 if [[ ! -f rust-bpf-$machine-$version.md ]]; then
@@ -21,7 +44,6 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
     mkdir -p rust-bpf
     pushd rust-bpf
     wget --progress=dot:giga https://github.com/solana-labs/rust-bpf-builder/releases/download/$version/$filename
-    # cp ../../../hack/rust-bpf-builder/deploy/$filename .
     tar -jxf $filename
     rm -rf $filename
     echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > ../rust-bpf-$machine-$version.md

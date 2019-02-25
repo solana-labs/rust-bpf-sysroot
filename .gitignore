@@ -1,4 +1,5 @@
 /target
+/llvm-native*
 /rust-bpf*
 **/*.rs.bk
 Cargo.lock
