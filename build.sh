@@ -46,6 +46,16 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
     wget --progress=dot:giga https://github.com/solana-labs/rust-bpf-builder/releases/download/$version/$filename
     tar -jxf $filename
     rm -rf $filename
+
+    set -ex
+    rust-bpf/bin/rustc --prints sysroot
+
+    set +e
+    rustup toolchain uninstall bpfsysroot
+    set -e
+    rustup toolchain link bpfsysroot rust-bpf
+    rustup override set bpfsysroot
+
     echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > ../rust-bpf-$machine-$version.md
     popd
   )
@@ -53,12 +63,7 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
   if [[ $exitcode -ne 0 ]]; then
     rm -rf rust-bpf
     exit 1
-  fi
-  set +e
-  rustup toolchain uninstall bpfsysroot
-  set -e
-  rustup toolchain link bpfsysroot rust-bpf
-  rustup override set bpfsysroot
+  fi  
 fi
 
 set +e
