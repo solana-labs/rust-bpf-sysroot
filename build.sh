@@ -40,15 +40,17 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
     filename=solana-rust-bpf-$machine.tar.bz2
 
     set -ex
-    rm -rf rust-bpf*
+    rm -rf rust-bpf
+    rm -rf rust-bpf-$machine-*
     mkdir -p rust-bpf
     pushd rust-bpf
     wget --progress=dot:giga https://github.com/solana-labs/rust-bpf-builder/releases/download/$version/$filename
     tar -jxf $filename
     rm -rf $filename
+    popd
 
     set -ex
-    rust-bpf/bin/rustc --print sysroot
+    ./rust-bpf/bin/rustc --print sysroot
 
     set +e
     rustup toolchain uninstall bpfsysroot
@@ -56,8 +58,7 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
     rustup toolchain link bpfsysroot rust-bpf
     rustup override set bpfsysroot
 
-    echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > ../rust-bpf-$machine-$version.md
-    popd
+    echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > rust-bpf-$machine-$version.md
   )
   exitcode=$?
   if [[ $exitcode -ne 0 ]]; then
