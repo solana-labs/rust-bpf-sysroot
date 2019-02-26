@@ -48,7 +48,7 @@ if [[ ! -f rust-bpf-$machine-$version.md ]]; then
     rm -rf $filename
 
     set -ex
-    rust-bpf/bin/rustc --prints sysroot
+    rust-bpf/bin/rustc --print sysroot
 
     set +e
     rustup toolchain uninstall bpfsysroot
