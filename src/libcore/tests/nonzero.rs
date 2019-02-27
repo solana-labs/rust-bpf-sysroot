@@ -13,6 +13,7 @@ fn test_create_nonzero_instance() {
 #[test]
 fn test_size_nonzero_in_option() {
     assert_eq!(size_of::<NonZeroU32>(), size_of::<Option<NonZeroU32>>());
+    assert_eq!(size_of::<NonZeroI32>(), size_of::<Option<NonZeroI32>>());
 }
 
 #[test]

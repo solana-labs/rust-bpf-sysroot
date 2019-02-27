@@ -211,9 +211,18 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 }
 
-/// A struct to represent both where to emit formatting strings to and how they
-/// should be formatted. A mutable version of this is passed to all formatting
-/// traits.
+/// Configuration for formatting.
+///
+/// A `Formatter` represents various options related to formatting. Users do not
+/// construct `Formatter`s directly; a mutable reference to one is passed to
+/// the `fmt` method of all formatting traits, like [`Debug`] and [`Display`].
+///
+/// To interact with a `Formatter`, you'll call various methods to change the
+/// various options related to formatting. For examples, please see the
+/// documentation of the methods defined on `Formatter` below.
+///
+/// [`Debug`]: trait.Debug.html
+/// [`Display`]: trait.Display.html
 #[allow(missing_debug_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
@@ -474,12 +483,12 @@ impl Display for Arguments<'_> {
 /// implementations, such as [`debug_struct`][debug_struct].
 ///
 /// `Debug` implementations using either `derive` or the debug builder API
-/// on [`Formatter`] support pretty printing using the alternate flag: `{:#?}`.
+/// on [`Formatter`] support pretty-printing using the alternate flag: `{:#?}`.
 ///
 /// [debug_struct]: ../../std/fmt/struct.Formatter.html#method.debug_struct
 /// [`Formatter`]: ../../std/fmt/struct.Formatter.html
 ///
-/// Pretty printing with `#?`:
+/// Pretty-printing with `#?`:
 ///
 /// ```
 /// #[derive(Debug)]
@@ -997,28 +1006,30 @@ pub fn write(output: &mut dyn Write, args: Arguments) -> Result {
         curarg: args.args.iter(),
     };
 
-    let mut pieces = args.pieces.iter();
+    let mut idx = 0;
 
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(pieces.by_ref()) {
+            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
                 (arg.formatter)(arg.value, &mut formatter)?;
+                idx += 1;
             }
         }
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
             // a string piece.
-            for (arg, piece) in fmt.iter().zip(pieces.by_ref()) {
+            for (arg, piece) in fmt.iter().zip(args.pieces.iter()) {
                 formatter.buf.write_str(*piece)?;
                 formatter.run(arg)?;
+                idx += 1;
             }
         }
     }
 
     // There can be only one trailing string piece left.
-    if let Some(piece) = pieces.next() {
+    if let Some(piece) = args.pieces.get(idx) {
         formatter.buf.write_str(*piece)?;
     }
 
@@ -2037,7 +2048,7 @@ macro_rules! tuple {
     ( $($name:ident,)+ ) => (
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<$($name:Debug),*> Debug for ($($name,)*) where last_type!($($name,)+): ?Sized {
-            #[allow(non_snake_case, unused_assignments, deprecated)]
+            #[allow(non_snake_case, unused_assignments)]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 let mut builder = f.debug_tuple("");
                 let ($(ref $name,)*) = *self;

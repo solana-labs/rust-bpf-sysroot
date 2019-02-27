@@ -97,7 +97,7 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>,
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
     #[stable(feature = "debug_builders", since = "1.2.0")]
-    pub fn field(&mut self, name: &str, _value: &dyn fmt::Debug) -> &mut DebugStruct<'a, 'b> {
+    pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
                 ","
@@ -112,12 +112,10 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 writer.write_str("\n")?;
                 writer.write_str(name)?;
                 writer.write_str(": ")?;
-                // value.fmt(&mut writer)
-                Ok(())
+                value.fmt(&mut writer)
             } else {
                 write!(self.fmt, "{} {}: ", prefix, name)?;
-                // value.fmt(self.fmt)
-                Ok(())
+                value.fmt(self.fmt)
             }
         });
 

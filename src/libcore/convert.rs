@@ -17,7 +17,10 @@
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
 //! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
-//! blanket implementation in the standard library.
+//! blanket implementation in the standard library.  However, there are some cases
+//! where this is not possible, such as creating conversions into a type defined
+//! outside your library, so implementing [`Into`] instead of [`From`] is
+//! sometimes necessary.
 //!
 //! # Generic Implementations
 //!
@@ -217,7 +220,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// There is one exception to implementing `Into`, and it's kind of esoteric.
 /// If the destination type is not part of the current crate, and it uses a
-/// generic variable, then you can't implement `From` directly.  For example,
+/// generic variable, then you can't implement `From` directly. For example,
 /// take this crate:
 ///
 /// ```compile_fail
@@ -463,11 +466,11 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[unstable(feature = "try_from", issue = "33417")]
-impl<T, U> TryFrom<U> for T where T: From<U> {
+impl<T, U> TryFrom<U> for T where U: Into<T> {
     type Error = !;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {
-        Ok(T::from(value))
+        Ok(U::into(value))
     }
 }
 
