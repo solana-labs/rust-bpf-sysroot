@@ -102,13 +102,13 @@ nonzero_integers! {
     #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU16(u16);
     #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU32(u32);
     #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU64(u64);
-    //#[stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
+    #[stable(feature = "nonzero", since = "1.28.0")] NonZeroU128(u128);
     #[stable(feature = "nonzero", since = "1.28.0")] NonZeroUsize(usize);
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI8(i8);
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI16(i16);
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI32(i32);
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI64(i64);
-    //#[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroI128(i128);
     #[stable(feature = "signed_nonzero", since = "1.34.0")] NonZeroIsize(isize);
 }
 
@@ -2122,6 +2122,18 @@ impl i64 {
          "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
          "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
+}
+
+#[lang = "i128"]
+impl i128 {
+    int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
+        170141183460469231731687303715884105727, "", "", 16,
+        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]" }
 }
 
 #[cfg(target_pointer_width = "16")]
@@ -4399,6 +4411,17 @@ impl u64 {
         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
 }
 
+#[lang = "u128"]
+impl u128 {
+    uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
+        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]" }
+}
+
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
@@ -4482,7 +4505,7 @@ macro_rules! from_str_radix_int_impl {
         }
     )*}
 }
-from_str_radix_int_impl! { isize i8 i16 i32 i64 usize u8 u16 u32 u64 }
+from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 
 /// The error type returned when a checked integral type conversion fails.
 #[unstable(feature = "try_from", issue = "33417")]
@@ -4598,25 +4621,30 @@ macro_rules! rev {
 try_from_upper_bounded!(u16, u8);
 try_from_upper_bounded!(u32, u16, u8);
 try_from_upper_bounded!(u64, u32, u16, u8);
+try_from_upper_bounded!(u128, u64, u32, u16, u8);
 
 try_from_both_bounded!(i16, i8);
 try_from_both_bounded!(i32, i16, i8);
 try_from_both_bounded!(i64, i32, i16, i8);
+try_from_both_bounded!(i128, i64, i32, i16, i8);
 
 // unsigned-to-signed
 try_from_upper_bounded!(u8, i8);
 try_from_upper_bounded!(u16, i8, i16);
 try_from_upper_bounded!(u32, i8, i16, i32);
 try_from_upper_bounded!(u64, i8, i16, i32, i64);
+try_from_upper_bounded!(u128, i8, i16, i32, i64, i128);
 
 // signed-to-unsigned
-try_from_lower_bounded!(i8, u8, u16, u32, u64);
-try_from_lower_bounded!(i16, u16, u32, u64);
-try_from_lower_bounded!(i32, u32, u64);
-try_from_lower_bounded!(i64, u64);
+try_from_lower_bounded!(i8, u8, u16, u32, u64, u128);
+try_from_lower_bounded!(i16, u16, u32, u64, u128);
+try_from_lower_bounded!(i32, u32, u64, u128);
+try_from_lower_bounded!(i64, u64, u128);
+try_from_lower_bounded!(i128, u128);
 try_from_both_bounded!(i16, u8);
 try_from_both_bounded!(i32, u16, u8);
 try_from_both_bounded!(i64, u32, u16, u8);
+try_from_both_bounded!(i128, u64, u32, u16, u8);
 
 // usize/isize
 try_from_upper_bounded!(usize, isize);
@@ -4628,17 +4656,21 @@ mod ptr_try_from_impls {
     use convert::TryFrom;
 
     try_from_upper_bounded!(usize, u8);
-    try_from_unbounded!(usize, u16, u32, u64);
+    try_from_unbounded!(usize, u16, u32, u64, u128);
     try_from_upper_bounded!(usize, i8, i16);
+    try_from_unbounded!(usize, i32, i64, i128);
 
     try_from_both_bounded!(isize, u8);
-    try_from_lower_bounded!(isize, u16, u32, u64);
+    try_from_lower_bounded!(isize, u16, u32, u64, u128);
     try_from_both_bounded!(isize, i8);
+    try_from_unbounded!(isize, i16, i32, i64, i128);
 
-    rev!(try_from_upper_bounded, usize, u32, u64);
+    rev!(try_from_upper_bounded, usize, u32, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16);
+    rev!(try_from_both_bounded, usize, i32, i64, i128);
 
-    rev!(try_from_upper_bounded, isize, u16, u32, u64);
+    rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
+    rev!(try_from_both_bounded, isize, i32, i64, i128);
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -4647,20 +4679,24 @@ mod ptr_try_from_impls {
     use convert::TryFrom;
 
     try_from_upper_bounded!(usize, u8, u16);
-    try_from_unbounded!(usize, u32, u64);
+    try_from_unbounded!(usize, u32, u64, u128);
     try_from_upper_bounded!(usize, i8, i16, i32);
+    try_from_unbounded!(usize, i64, i128);
 
     try_from_both_bounded!(isize, u8, u16);
-    try_from_lower_bounded!(isize, u32, u64);
+    try_from_lower_bounded!(isize, u32, u64, u128);
     try_from_both_bounded!(isize, i8, i16);
+    try_from_unbounded!(isize, i32, i64, i128);
 
     rev!(try_from_unbounded, usize, u32);
-    rev!(try_from_upper_bounded, usize, u64);
+    rev!(try_from_upper_bounded, usize, u64, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32);
+    rev!(try_from_both_bounded, usize, i64, i128);
 
     rev!(try_from_unbounded, isize, u16);
-    rev!(try_from_upper_bounded, isize, u32, u64);
+    rev!(try_from_upper_bounded, isize, u32, u64, u128);
     rev!(try_from_unbounded, isize, i32);
+    rev!(try_from_both_bounded, isize, i64, i128);
 }
 
 #[cfg(target_pointer_width = "64")]
@@ -4669,20 +4705,24 @@ mod ptr_try_from_impls {
     use convert::TryFrom;
 
     try_from_upper_bounded!(usize, u8, u16, u32);
-    try_from_unbounded!(usize, u64);
+    try_from_unbounded!(usize, u64, u128);
     try_from_upper_bounded!(usize, i8, i16, i32, i64);
+    try_from_unbounded!(usize, i128);
 
     try_from_both_bounded!(isize, u8, u16, u32);
-    try_from_lower_bounded!(isize, u64);
+    try_from_lower_bounded!(isize, u64, u128);
     try_from_both_bounded!(isize, i8, i16, i32);
+    try_from_unbounded!(isize, i64, i128);
 
     rev!(try_from_unbounded, usize, u32, u64);
-    // rev!(try_from_upper_bounded, usize);
+    rev!(try_from_upper_bounded, usize, u128);
     rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
+    rev!(try_from_both_bounded, usize, i128);
 
     rev!(try_from_unbounded, isize, u16, u32);
-    rev!(try_from_upper_bounded, isize, u64);
+    rev!(try_from_upper_bounded, isize, u64, u128);
     rev!(try_from_unbounded, isize, i32, i64);
+    rev!(try_from_both_bounded, isize, i128);
 }
 
 #[doc(hidden)]
@@ -4717,7 +4757,7 @@ macro_rules! doit {
         }
     })*)
 }
-doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
 
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;
@@ -4908,38 +4948,52 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { u128, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { usize, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { i8, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { i16, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { i32, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { i64, #[stable(feature = "from_bool", since = "1.28.0")] }
+impl_from_bool! { i128, #[stable(feature = "from_bool", since = "1.28.0")] }
 impl_from_bool! { isize, #[stable(feature = "from_bool", since = "1.28.0")] }
 
 // Unsigned -> Unsigned
 impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, u128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u32, u128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { u64, u128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Signed -> Signed
 impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { i32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { i64, i128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // Unsigned -> Signed
 impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u8, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
 impl_from! { u16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u16, i128, #[stable(feature = "i128", since = "1.26.0")] }
 impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
+impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
+impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
 
 // The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
 // which imply that pointer-sized integers must be at least 16 bits:

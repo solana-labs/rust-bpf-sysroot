@@ -134,27 +134,26 @@ macro_rules! step_impl_signed {
     )*)
 }
 
-// Unused when 128 bit types are disabled
-// macro_rules! step_impl_no_between {
-//     ($($t:ty)*) => ($(
-//         #[unstable(feature = "step_trait",
-//                    reason = "likely to be replaced by finer-grained traits",
-//                    issue = "42168")]
-//         impl Step for $t {
-//             #[inline]
-//             fn steps_between(_start: &Self, _end: &Self) -> Option<usize> {
-//                 None
-//             }
+macro_rules! step_impl_no_between {
+    ($($t:ty)*) => ($(
+        #[unstable(feature = "step_trait",
+                   reason = "likely to be replaced by finer-grained traits",
+                   issue = "42168")]
+        impl Step for $t {
+            #[inline]
+            fn steps_between(_start: &Self, _end: &Self) -> Option<usize> {
+                None
+            }
 
-//             #[inline]
-//             fn add_usize(&self, n: usize) -> Option<Self> {
-//                 self.checked_add(n as $t)
-//             }
+            #[inline]
+            fn add_usize(&self, n: usize) -> Option<Self> {
+                self.checked_add(n as $t)
+            }
 
-//             step_identical_methods!();
-//         }
-//     )*)
-// }
+            step_identical_methods!();
+        }
+    )*)
+}
 
 step_impl_unsigned!(usize u8 u16);
 #[cfg(not(target_pointer_width = "16"))]
@@ -174,7 +173,7 @@ step_impl_signed!([i64: u64]);
 // assume here that it is less than 64-bits.
 #[cfg(not(target_pointer_width = "64"))]
 step_impl_no_between!(u64 i64);
-//step_impl_no_between!(u128 i128);
+step_impl_no_between!(u128 i128);
 
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(

@@ -102,17 +102,19 @@ macro_rules! sh_impl_all {
         //sh_impl_unsigned! { $t, u16 }
         //sh_impl_unsigned! { $t, u32 }
         //sh_impl_unsigned! { $t, u64 }
+        //sh_impl_unsigned! { $t, u128 }
         sh_impl_unsigned! { $t, usize }
 
         //sh_impl_signed! { $t, i8 }
         //sh_impl_signed! { $t, i16 }
         //sh_impl_signed! { $t, i32 }
         //sh_impl_signed! { $t, i64 }
+        //sh_impl_signed! { $t, i128 }
         //sh_impl_signed! { $t, isize }
     )*)
 }
 
-sh_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 // FIXME(30524): impl Op<T> for Wrapping<T>, impl OpAssign<T> for Wrapping<T>
 macro_rules! wrapping_impl {
@@ -311,7 +313,7 @@ macro_rules! wrapping_impl {
     )*)
 }
 
-wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+wrapping_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 macro_rules! wrapping_int_impl {
     ($($t:ty)*) => ($(
@@ -673,7 +675,7 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
     )*)
 }
 
-wrapping_int_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
+wrapping_int_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 macro_rules! wrapping_int_impl_signed {
     ($($t:ty)*) => ($(
@@ -802,7 +804,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
     )*)
 }
 
-wrapping_int_impl_signed! { isize i8 i16 i32 i64 }
+wrapping_int_impl_signed! { isize i8 i16 i32 i64 i128 }
 
 macro_rules! wrapping_int_impl_unsigned {
     ($($t:ty)*) => ($(
@@ -879,7 +881,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
     )*)
 }
 
-wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 }
+wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]
@@ -906,11 +908,13 @@ mod shift_max {
     pub const i16: u32 = (1 << 4) - 1;
     pub const i32: u32 = (1 << 5) - 1;
     pub const i64: u32 = (1 << 6) - 1;
+    pub const i128: u32 = (1 << 7) - 1;
     pub use self::platform::isize;
 
     pub const u8: u32 = i8;
     pub const u16: u32 = i16;
     pub const u32: u32 = i32;
     pub const u64: u32 = i64;
+    pub const u128: u32 = i128;
     pub use self::platform::usize;
 }

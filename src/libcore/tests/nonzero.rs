@@ -1,4 +1,4 @@
-use core::num::NonZeroU32;
+use core::num::{NonZeroU32, NonZeroI32};
 use core::option::Option;
 use core::option::Option::{Some, None};
 use std::mem::size_of;
@@ -118,4 +118,11 @@ fn test_from_nonzero() {
     let nz = NonZeroU32::new(1).unwrap();
     let num: u32 = nz.into();
     assert_eq!(num, 1u32);
+}
+
+#[test]
+fn test_from_signed_nonzero() {
+    let nz = NonZeroI32::new(1).unwrap();
+    let num: i32 = nz.into();
+    assert_eq!(num, 1i32);
 }
