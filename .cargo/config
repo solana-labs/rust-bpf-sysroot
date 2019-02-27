@@ -1,6 +1,0 @@
-
-[build]
-rustflags = ["-Clto=no", "-Ccodegen-units=1", "-Copt-level=2" ]
-
-[target.bpfel_unknown_unknown]
-rustflags = [  "-C lto=no", "-C codegen-units=1", "-C debuginfo=0", "-C opt-level=2", "-Z no-parallel-llvm", "--emit=llvm-ir" ]

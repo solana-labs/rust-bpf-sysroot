@@ -18,15 +18,4 @@ panic = "abort"
 name = "rust_bpf_sysroot"
 crate-type = ["cdylib"]
 
-[package.metadata.cargo-sysroot]
-target = "bpfel_unknown_unknown.json"
-path = "../../../../sdk/bpf/rust-sysroot"
-
-[package.metadata.cargo-xbuild]
-sysroot_path = "../../../../sdk/bpf/rust-sysroot"
-
-[package.metadata.xargo]
-sysroot_path = "../../../../sdk/bpf/rust-sysroot"
-path = "../../../../sdk/bpf/rust-sysroot"
-sysroot = "../../../../sdk/bpf/rust-sysroot"
 
