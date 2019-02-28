@@ -47,14 +47,16 @@ if [[ ! -f deps/rust-bpf-$machine-$version.md ]]; then
     wget --progress=dot:giga https://github.com/solana-labs/rust-bpf-builder/releases/download/$version/$filename
     tar -jxf $filename
     rm -rf $filename
+    popd
 
+    # Override must be called from base sysroot directory
     set +e
     rustup toolchain uninstall bpfsysroot
     set -e
-    rustup toolchain link bpfsysroot ../rust-bpf
+    rustup toolchain link bpfsysroot deps/rust-bpf
     rustup override set bpfsysroot
 
-    echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > ../rust-bpf-$machine-$version.md
+    echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > deps/rust-bpf-$machine-$version.md
   )
   exitcode=$?
   if [[ $exitcode -ne 0 ]]; then
