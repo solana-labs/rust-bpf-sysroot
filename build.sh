@@ -34,7 +34,7 @@ if [[ ! -f deps/llvm-native-$machine-$version.md ]]; then
 fi
 
 # Install Rust BPF
-version=v0.0.1
+version=v0.0.2
 if [[ ! -f deps/rust-bpf-$machine-$version.md ]]; then
   (
     filename=solana-rust-bpf-$machine.tar.bz2
