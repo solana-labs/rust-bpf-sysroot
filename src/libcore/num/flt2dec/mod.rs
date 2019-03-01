@@ -121,10 +121,10 @@ functions.
             issue = "0")]
 
 use i16;
-// pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
+pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 
 pub mod estimator;
-// pub mod decoder;
+pub mod decoder;
 
 // /// Digit-generation algorithms.
 // pub mod strategy {
