@@ -186,12 +186,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cmp::Ordering;
-use fmt::{self, Debug, Display};
-use marker::Unsize;
-use mem;
-use ops::{Deref, DerefMut, CoerceUnsized};
-use ptr;
+use crate::cmp::Ordering;
+use crate::fmt::{self, Debug, Display};
+use crate::marker::Unsize;
+use crate::mem;
+use crate::ops::{Deref, DerefMut, CoerceUnsized};
+use crate::ptr;
 
 /// A mutable memory location.
 ///
@@ -577,14 +577,14 @@ pub struct BorrowError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowError").finish()
     }
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt("already mutably borrowed", f)
     }
 }
@@ -597,14 +597,14 @@ pub struct BorrowMutError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowMutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowMutError").finish()
     }
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowMutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt("already borrowed", f)
     }
 }
@@ -702,8 +702,6 @@ impl<T> RefCell<T> {
     /// Replaces the wrapped value with a new one computed from `f`, returning
     /// the old value, without deinitializing either one.
     ///
-    /// This function corresponds to [`std::mem::replace`](../mem/fn.replace.html).
-    ///
     /// # Panics
     ///
     /// Panics if the value is currently borrowed.
@@ -711,7 +709,6 @@ impl<T> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_replace_swap)]
     /// use std::cell::RefCell;
     /// let cell = RefCell::new(5);
     /// let old_value = cell.replace_with(|&mut old| old + 1);
@@ -719,7 +716,7 @@ impl<T> RefCell<T> {
     /// assert_eq!(cell, RefCell::new(6));
     /// ```
     #[inline]
-    #[unstable(feature = "refcell_replace_swap", issue="43570")]
+    #[stable(feature = "refcell_replace_swap", since="1.35.0")]
     pub fn replace_with<F: FnOnce(&mut T) -> T>(&self, f: F) -> T {
         let mut_borrow = &mut *self.borrow_mut();
         let replacement = f(mut_borrow);
@@ -791,7 +788,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn borrow(&self) -> Ref<T> {
+    pub fn borrow(&self) -> Ref<'_, T> {
         self.try_borrow().expect("already mutably borrowed")
     }
 
@@ -822,7 +819,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
-    pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError> {
+    pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Ok(Ref {
                 value: unsafe { &*self.value.get() },
@@ -872,7 +869,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn borrow_mut(&self) -> RefMut<T> {
+    pub fn borrow_mut(&self) -> RefMut<'_, T> {
         self.try_borrow_mut().expect("already borrowed")
     }
 
@@ -900,7 +897,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
-    pub fn try_borrow_mut(&self) -> Result<RefMut<T>, BorrowMutError> {
+    pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Ok(RefMut {
                 value: unsafe { &mut *self.value.get() },
@@ -956,6 +953,44 @@ impl<T: ?Sized> RefCell<T> {
     pub fn get_mut(&mut self) -> &mut T {
         unsafe {
             &mut *self.value.get()
+        }
+    }
+
+    /// Immutably borrows the wrapped value, returning an error if the value is
+    /// currently mutably borrowed.
+    ///
+    /// # Safety
+    ///
+    /// Unlike `RefCell::borrow`, this method is unsafe because it does not
+    /// return a `Ref`, thus leaving the borrow flag untouched. Mutably
+    /// borrowing the `RefCell` while the reference returned by this method
+    /// is alive is undefined behaviour.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(borrow_state)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// {
+    ///     let m = c.borrow_mut();
+    ///     assert!(unsafe { c.try_borrow_unguarded() }.is_err());
+    /// }
+    ///
+    /// {
+    ///     let m = c.borrow();
+    ///     assert!(unsafe { c.try_borrow_unguarded() }.is_ok());
+    /// }
+    /// ```
+    #[unstable(feature = "borrow_state", issue = "27733")]
+    #[inline]
+    pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
+        if !is_writing(self.borrow.get()) {
+            Ok(&*self.value.get())
+        } else {
+            Err(BorrowError { _private: () })
         }
     }
 }
@@ -1186,7 +1221,6 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_map_split)]
     /// use std::cell::{Ref, RefCell};
     ///
     /// let cell = RefCell::new([1, 2, 3, 4]);
@@ -1195,7 +1229,7 @@ impl<'b, T: ?Sized> Ref<'b, T> {
     /// assert_eq!(*begin, [1, 2]);
     /// assert_eq!(*end, [3, 4]);
     /// ```
-    #[unstable(feature = "refcell_map_split", issue = "51476")]
+    #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(orig: Ref<'b, T>, f: F) -> (Ref<'b, U>, Ref<'b, V>)
         where F: FnOnce(&T) -> (&U, &V)
@@ -1211,7 +1245,7 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b,
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.value.fmt(f)
     }
 }
@@ -1268,7 +1302,6 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(refcell_map_split)]
     /// use std::cell::{RefCell, RefMut};
     ///
     /// let cell = RefCell::new([1, 2, 3, 4]);
@@ -1279,7 +1312,7 @@ impl<'b, T: ?Sized> RefMut<'b, T> {
     /// begin.copy_from_slice(&[4, 3]);
     /// end.copy_from_slice(&[2, 1]);
     /// ```
-    #[unstable(feature = "refcell_map_split", issue = "51476")]
+    #[stable(feature = "refcell_map_split", since = "1.35.0")]
     #[inline]
     pub fn map_split<U: ?Sized, V: ?Sized, F>(
         orig: RefMut<'b, T>, f: F
@@ -1369,7 +1402,7 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.value.fmt(f)
     }
 }
@@ -1423,7 +1456,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// ```
 /// use std::cell::UnsafeCell;
-/// use std::marker::Sync;
 ///
 /// # #[allow(dead_code)]
 /// struct NotThreadSafe<T> {

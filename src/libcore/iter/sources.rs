@@ -1,6 +1,6 @@
-use fmt;
-use marker;
-use usize;
+use crate::fmt;
+use crate::marker;
+use crate::usize;
 
 use super::{FusedIterator, TrustedLen};
 
@@ -39,8 +39,7 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 
 /// Creates a new iterator that endlessly repeats a single element.
 ///
-/// The `repeat()` function repeats a single value over and over and over and
-/// over and over and 🔁.
+/// The `repeat()` function repeats a single value over and over again.
 ///
 /// Infinite iterators like `repeat()` are often used with adapters like
 /// [`take`], in order to make them finite.
@@ -128,8 +127,7 @@ unsafe impl<A, F: FnMut() -> A> TrustedLen for RepeatWith<F> {}
 /// Creates a new iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
 ///
-/// The `repeat_with()` function calls the repeater over and over and over and
-/// over and over and 🔁.
+/// The `repeat_with()` function calls the repeater over and over again.
 ///
 /// Infinite iterators like `repeat_with()` are often used with adapters like
 /// [`take`], in order to make them finite.
@@ -202,7 +200,7 @@ pub struct Empty<T>(marker::PhantomData<T>);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Empty")
     }
 }
@@ -285,7 +283,7 @@ pub const fn empty<T>() -> Empty<T> {
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
-    inner: ::option::IntoIter<T>
+    inner: crate::option::IntoIter<T>
 }
 
 #[stable(feature = "iter_once", since = "1.2.0")]
@@ -377,8 +375,8 @@ pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }
 
-/// An iterator that repeats elements of type `A` endlessly by
-/// applying the provided closure `F: FnMut() -> A`.
+/// An iterator that yields a single element of type `A` by
+/// applying the provided closure `F: FnOnce() -> A`.
 ///
 /// This `struct` is created by the [`once_with`] function.
 /// See its documentation for more.
@@ -514,7 +512,6 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// [module-level documentation]: index.html
 ///
 /// ```
-/// #![feature(iter_unfold)]
 /// let mut count = 0;
 /// let counter = std::iter::from_fn(move || {
 ///     // Increment our count. This is why we started at zero.
@@ -530,7 +527,7 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 /// assert_eq!(counter.collect::<Vec<_>>(), &[1, 2, 3, 4, 5]);
 /// ```
 #[inline]
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub fn from_fn<T, F>(f: F) -> FromFn<F>
     where F: FnMut() -> Option<T>
 {
@@ -544,10 +541,10 @@ pub fn from_fn<T, F>(f: F) -> FromFn<F>
 ///
 /// [`iter::from_fn`]: fn.from_fn.html
 #[derive(Clone)]
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub struct FromFn<F>(F);
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<T, F> Iterator for FromFn<F>
     where F: FnMut() -> Option<T>
 {
@@ -559,9 +556,9 @@ impl<T, F> Iterator for FromFn<F>
     }
 }
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<F> fmt::Debug for FromFn<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromFn").finish()
     }
 }
@@ -572,13 +569,12 @@ impl<F> fmt::Debug for FromFn<F> {
 /// and calls the given `FnMut(&T) -> Option<T>` closure to compute each item’s successor.
 ///
 /// ```
-/// #![feature(iter_unfold)]
 /// use std::iter::successors;
 ///
 /// let powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
 /// assert_eq!(powers_of_10.collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
 /// ```
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_successors", since = "1.34.0")]
 pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {
@@ -598,13 +594,13 @@ pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
 ///
 /// [`successors`]: fn.successors.html
 #[derive(Clone)]
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_successors", since = "1.34.0")]
 pub struct Successors<T, F> {
     next: Option<T>,
     succ: F,
 }
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T, F> Iterator for Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {
@@ -628,14 +624,14 @@ impl<T, F> Iterator for Successors<T, F>
     }
 }
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T, F> FusedIterator for Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {}
 
-#[unstable(feature = "iter_unfold", issue = "55977")]
+#[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T: fmt::Debug, F> fmt::Debug for Successors<T, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Successors")
             .field("next", &self.next)
             .finish()

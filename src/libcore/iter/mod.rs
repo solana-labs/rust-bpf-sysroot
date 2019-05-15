@@ -101,7 +101,7 @@
 //!     type Item = usize;
 //!
 //!     // next() is the only required method
-//!     fn next(&mut self) -> Option<usize> {
+//!     fn next(&mut self) -> Option<Self::Item> {
 //!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
@@ -306,7 +306,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ops::Try;
+use crate::ops::Try;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;
@@ -326,8 +326,10 @@ pub use self::sources::{Empty, empty};
 pub use self::sources::{Once, once};
 #[unstable(feature = "iter_once_with", issue = "57581")]
 pub use self::sources::{OnceWith, once_with};
-#[unstable(feature = "iter_unfold", issue = "55977")]
-pub use self::sources::{FromFn, from_fn, Successors, successors};
+#[stable(feature = "iter_from_fn", since = "1.34.0")]
+pub use self::sources::{FromFn, from_fn};
+#[stable(feature = "iter_successors", since = "1.34.0")]
+pub use self::sources::{Successors, successors};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
@@ -350,7 +352,7 @@ pub use self::adapters::Cloned;
 pub use self::adapters::StepBy;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
-#[unstable(feature = "iter_copied", issue = "57127")]
+#[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
 
 pub(crate) use self::adapters::TrustedRandomAccess;

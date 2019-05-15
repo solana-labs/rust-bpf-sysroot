@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Slice management and manipulation.
 //!
 //! For more details see [`std::slice`].
@@ -20,20 +22,20 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-use cmp::Ordering::{self, Less, Equal, Greater};
-use cmp;
-use fmt;
-use intrinsics::assume;
-use isize;
-use iter::*;
-use ops::{FnMut, Try, self};
-use option::Option;
-use option::Option::{None, Some};
-use result::Result;
-use result::Result::{Ok, Err};
-use ptr;
-use mem;
-use marker::{Copy, Send, Sync, Sized, self};
+use crate::cmp::Ordering::{self, Less, Equal, Greater};
+use crate::cmp;
+use crate::fmt;
+use crate::intrinsics::assume;
+use crate::isize;
+use crate::iter::*;
+use crate::ops::{FnMut, Try, self};
+use crate::option::Option;
+use crate::option::Option::{None, Some};
+use crate::result::Result;
+use crate::result::Result::{Ok, Err};
+use crate::ptr;
+use crate::mem;
+use crate::marker::{Copy, Send, Sync, Sized, self};
 
 #[unstable(feature = "slice_internals", issue = "0",
            reason = "exposed from core to be reused in std; use the memchr crate")]
@@ -524,7 +526,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         unsafe {
             let ptr = self.as_ptr();
             assume(!ptr.is_null());
@@ -556,7 +558,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn iter_mut(&mut self) -> IterMut<T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         unsafe {
             let ptr = self.as_mut_ptr();
             assume(!ptr.is_null());
@@ -603,7 +605,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn windows(&self, size: usize) -> Windows<T> {
+    pub fn windows(&self, size: usize) -> Windows<'_, T> {
         assert!(size != 0);
         Windows { v: self, size }
     }
@@ -637,7 +639,7 @@ impl<T> [T] {
     /// [`rchunks`]: #method.rchunks
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
+    pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
         assert!(chunk_size != 0);
         Chunks { v: self, chunk_size }
     }
@@ -675,7 +677,7 @@ impl<T> [T] {
     /// [`rchunks_mut`]: #method.rchunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
+    pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
         assert!(chunk_size != 0);
         ChunksMut { v: self, chunk_size }
     }
@@ -712,7 +714,7 @@ impl<T> [T] {
     /// [`rchunks_exact`]: #method.rchunks_exact
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
-    pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<T> {
+    pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
@@ -757,7 +759,7 @@ impl<T> [T] {
     /// [`rchunks_exact_mut`]: #method.rchunks_exact_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
-    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<T> {
+    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
@@ -794,7 +796,7 @@ impl<T> [T] {
     /// [`chunks`]: #method.chunks
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks(&self, chunk_size: usize) -> RChunks<T> {
+    pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
         assert!(chunk_size != 0);
         RChunks { v: self, chunk_size }
     }
@@ -832,13 +834,13 @@ impl<T> [T] {
     /// [`chunks_mut`]: #method.chunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<T> {
+    pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
         assert!(chunk_size != 0);
         RChunksMut { v: self, chunk_size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
-    /// beginning of the slice.
+    /// end of the slice.
     ///
     /// The chunks are slices and do not overlap. If `chunk_size` does not divide the length of the
     /// slice, then the last up to `chunk_size-1` elements will be omitted and can be retrieved
@@ -849,7 +851,7 @@ impl<T> [T] {
     ///
     /// See [`rchunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the
-    /// slice of the slice.
+    /// slice.
     ///
     /// # Panics
     ///
@@ -871,7 +873,7 @@ impl<T> [T] {
     /// [`chunks_exact`]: #method.chunks_exact
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<T> {
+    pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let (fst, snd) = self.split_at(rem);
@@ -890,7 +892,7 @@ impl<T> [T] {
     ///
     /// See [`rchunks_mut`] for a variant of this iterator that also returns the remainder as a
     /// smaller chunk, and [`chunks_exact_mut`] for the same iterator but starting at the beginning
-    /// of the slice of the slice.
+    /// of the slice.
     ///
     /// # Panics
     ///
@@ -916,7 +918,7 @@ impl<T> [T] {
     /// [`chunks_exact_mut`]: #method.chunks_exact_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<T> {
+    pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let (fst, snd) = self.split_at_mut(rem);
@@ -1042,7 +1044,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split<F>(&self, pred: F) -> Split<T, F>
+    pub fn split<F>(&self, pred: F) -> Split<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         Split {
@@ -1067,7 +1069,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<T, F>
+    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         SplitMut { v: self, pred, finished: false }
@@ -1102,7 +1104,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
-    pub fn rsplit<F>(&self, pred: F) -> RSplit<T, F>
+    pub fn rsplit<F>(&self, pred: F) -> RSplit<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplit { inner: self.split(pred) }
@@ -1127,7 +1129,7 @@ impl<T> [T] {
     ///
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
-    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<T, F>
+    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplitMut { inner: self.split_mut(pred) }
@@ -1154,7 +1156,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<T, F>
+    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         SplitN {
@@ -1184,7 +1186,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<T, F>
+    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         SplitNMut {
@@ -1217,7 +1219,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<T, F>
+    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplitN {
@@ -1248,7 +1250,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<T, F>
+    pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplitNMut {
@@ -1563,6 +1565,10 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
+    /// Due to its key calling strategy, [`sort_unstable_by_key`](#method.sort_unstable_by_key)
+    /// is likely to be slower than [`sort_by_cached_key`](#method.sort_by_cached_key) in
+    /// cases where the key function is expensive.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1579,6 +1585,153 @@ impl<T> [T] {
         where F: FnMut(&T) -> K, K: Ord
     {
         sort::quicksort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    /// Reorder the slice such that the element at `index` is at its final sorted position.
+    ///
+    /// This reordering has the additional property that any value at position `i < index` will be
+    /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
+    /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
+    /// (i.e. does not allocate), and `O(n)` worst-case. This function is also/ known as "kth
+    /// element" in other libraries. It returns a triplet of the following values: all elements less
+    /// than the one at the given index, the value at the given index, and all elements greater than
+    /// the one at the given index.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
+    /// used for [`sort_unstable`].
+    ///
+    /// [`sort_unstable`]: #method.sort_unstable
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_at_index)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// // Find the median
+    /// v.partition_at_index(2);
+    ///
+    /// // We are only guaranteed the slice will be one of the following, based on the way we sort
+    /// // about the specified index.
+    /// assert!(v == [-3, -5, 1, 2, 4] ||
+    ///         v == [-5, -3, 1, 2, 4] ||
+    ///         v == [-3, -5, 1, 4, 2] ||
+    ///         v == [-5, -3, 1, 4, 2]);
+    /// ```
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[inline]
+    pub fn partition_at_index(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
+        where T: Ord
+    {
+        let mut f = |a: &T, b: &T| a.lt(b);
+        sort::partition_at_index(self, index, &mut f)
+    }
+
+    /// Reorder the slice with a comparator function such that the element at `index` is at its
+    /// final sorted position.
+    ///
+    /// This reordering has the additional property that any value at position `i < index` will be
+    /// less than or equal to any value at a position `j > index` using the comparator function.
+    /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
+    /// position `index`), in-place (i.e. does not allocate), and `O(n)` worst-case. This function
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following
+    /// values: all elements less than the one at the given index, the value at the given index,
+    /// and all elements greater than the one at the given index, using the provided comparator
+    /// function.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
+    /// used for [`sort_unstable`].
+    ///
+    /// [`sort_unstable`]: #method.sort_unstable
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_at_index)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// // Find the median as if the slice were sorted in descending order.
+    /// v.partition_at_index_by(2, |a, b| b.cmp(a));
+    ///
+    /// // We are only guaranteed the slice will be one of the following, based on the way we sort
+    /// // about the specified index.
+    /// assert!(v == [2, 4, 1, -5, -3] ||
+    ///         v == [2, 4, 1, -3, -5] ||
+    ///         v == [4, 2, 1, -5, -3] ||
+    ///         v == [4, 2, 1, -3, -5]);
+    /// ```
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[inline]
+    pub fn partition_at_index_by<F>(&mut self, index: usize, mut compare: F)
+                                    -> (&mut [T], &mut T, &mut [T])
+        where F: FnMut(&T, &T) -> Ordering
+    {
+        let mut f = |a: &T, b: &T| compare(a, b) == Less;
+        sort::partition_at_index(self, index, &mut f)
+    }
+
+    /// Reorder the slice with a key extraction function such that the element at `index` is at its
+    /// final sorted position.
+    ///
+    /// This reordering has the additional property that any value at position `i < index` will be
+    /// less than or equal to any value at a position `j > index` using the key extraction function.
+    /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
+    /// position `index`), in-place (i.e. does not allocate), and `O(n)` worst-case. This function
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following
+    /// values: all elements less than the one at the given index, the value at the given index, and
+    /// all elements greater than the one at the given index, using the provided key extraction
+    /// function.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
+    /// used for [`sort_unstable`].
+    ///
+    /// [`sort_unstable`]: #method.sort_unstable
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_at_index)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// // Return the median as if the array were sorted according to absolute value.
+    /// v.partition_at_index_by_key(2, |a| a.abs());
+    ///
+    /// // We are only guaranteed the slice will be one of the following, based on the way we sort
+    /// // about the specified index.
+    /// assert!(v == [1, 2, -3, 4, -5] ||
+    ///         v == [1, 2, -3, -5, 4] ||
+    ///         v == [2, 1, -3, 4, -5] ||
+    ///         v == [2, 1, -3, -5, 4]);
+    /// ```
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[inline]
+    pub fn partition_at_index_by_key<K, F>(&mut self, index: usize, mut f: F)
+                                           -> (&mut [T], &mut T, &mut [T])
+        where F: FnMut(&T) -> K, K: Ord
+    {
+        let mut g = |a: &T, b: &T| f(a).lt(&f(b));
+        sort::partition_at_index(self, index, &mut g)
     }
 
     /// Moves all consecutive repeated elements to the end of the slice according to the
@@ -2105,13 +2258,14 @@ impl<T> [T] {
         // Luckily since all this is constant-evaluated... performance here matters not!
         #[inline]
         fn gcd(a: usize, b: usize) -> usize {
+            use crate::intrinsics;
             // iterative stein’s algorithm
             // We should still make this `const fn` (and revert to recursive algorithm if we do)
             // because relying on llvm to consteval all this is… well, it makes me uncomfortable.
             let (ctz_a, mut ctz_b) = unsafe {
                 if a == 0 { return b; }
                 if b == 0 { return a; }
-                (::intrinsics::cttz_nonzero(a), ::intrinsics::cttz_nonzero(b))
+                (intrinsics::cttz_nonzero(a), intrinsics::cttz_nonzero(b))
             };
             let k = ctz_a.min(ctz_b);
             let mut a = a >> ctz_a;
@@ -2120,21 +2274,21 @@ impl<T> [T] {
                 // remove all factors of 2 from b
                 b >>= ctz_b;
                 if a > b {
-                    ::mem::swap(&mut a, &mut b);
+                    mem::swap(&mut a, &mut b);
                 }
                 b = b - a;
                 unsafe {
                     if b == 0 {
                         break;
                     }
-                    ctz_b = ::intrinsics::cttz_nonzero(b);
+                    ctz_b = intrinsics::cttz_nonzero(b);
                 }
             }
             a << k
         }
-        let gcd: usize = gcd(::mem::size_of::<T>(), ::mem::size_of::<U>());
-        let ts: usize = ::mem::size_of::<U>() / gcd;
-        let us: usize = ::mem::size_of::<T>() / gcd;
+        let gcd: usize = gcd(mem::size_of::<T>(), mem::size_of::<U>());
+        let ts: usize = mem::size_of::<U>() / gcd;
+        let us: usize = mem::size_of::<T>() / gcd;
 
         // Armed with this knowledge, we can find how many `U`s we can fit!
         let us_len = self.len() / ts * us;
@@ -2154,7 +2308,7 @@ impl<T> [T] {
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This method is essentially a `transmute` with respect to the elements in the returned
     /// middle slice, so all the usual caveats pertaining to `transmute::<T, U>` also apply here.
@@ -2175,7 +2329,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
+        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -2183,7 +2337,7 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
+        let offset = crate::ptr::align_offset(ptr, mem::align_of::<U>());
         if offset > self.len() {
             (self, &[], &[])
         } else {
@@ -2207,7 +2361,7 @@ impl<T> [T] {
     /// This method has no purpose when either input element `T` or output element `U` are
     /// zero-sized and will return the original slice without splitting anything.
     ///
-    /// # Unsafety
+    /// # Safety
     ///
     /// This method is essentially a `transmute` with respect to the elements in the returned
     /// middle slice, so all the usual caveats pertaining to `transmute::<T, U>` also apply here.
@@ -2228,7 +2382,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
+        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -2236,7 +2390,7 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
+        let offset = crate::ptr::align_offset(ptr, mem::align_of::<U>());
         if offset > self.len() {
             (self, &mut [], &mut [])
         } else {
@@ -2899,7 +3053,7 @@ macro_rules! iterator {
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, T> ExactSizeIterator for $name<'a, T> {
+        impl<T> ExactSizeIterator for $name<'_, T> {
             #[inline(always)]
             fn len(&self) -> usize {
                 len!(self)
@@ -3094,10 +3248,10 @@ macro_rules! iterator {
         }
 
         #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, T> FusedIterator for $name<'a, T> {}
+        impl<T> FusedIterator for $name<'_, T> {}
 
         #[unstable(feature = "trusted_len", issue = "37572")]
-        unsafe impl<'a, T> TrustedLen for $name<'a, T> {}
+        unsafe impl<T> TrustedLen for $name<'_, T> {}
     }
 }
 
@@ -3132,7 +3286,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Iter")
             .field(&self.as_slice())
             .finish()
@@ -3234,7 +3388,7 @@ pub struct IterMut<'a, T: 'a> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IterMut")
             .field(&self.make_slice())
             .finish()
@@ -3284,6 +3438,34 @@ impl<'a, T> IterMut<'a, T> {
     pub fn into_slice(self) -> &'a mut [T] {
         unsafe { from_raw_parts_mut(self.ptr, len!(self)) }
     }
+
+    /// Views the underlying data as a subslice of the original data.
+    ///
+    /// To avoid creating `&mut [T]` references that alias, the returned slice
+    /// borrows its lifetime from the iterator the method is applied on.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(slice_iter_mut_as_slice)]
+    /// let mut slice: &mut [usize] = &mut [1, 2, 3];
+    ///
+    /// // First, we get the iterator:
+    /// let mut iter = slice.iter_mut();
+    /// // So if we check what the `as_slice` method returns here, we have "[1, 2, 3]":
+    /// assert_eq!(iter.as_slice(), &[1, 2, 3]);
+    ///
+    /// // Next, we move to the second element of the slice:
+    /// iter.next();
+    /// // Now `as_slice` returns "[2, 3]":
+    /// assert_eq!(iter.as_slice(), &[2, 3]);
+    /// ```
+    #[unstable(feature = "slice_iter_mut_as_slice", reason = "recently added", issue = "58957")]
+    pub fn as_slice(&self) -> &[T] {
+        self.make_slice()
+    }
 }
 
 iterator!{struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
@@ -3313,7 +3495,7 @@ pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for Split<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Split")
             .field("v", &self.v)
             .field("finished", &self.finished)
@@ -3404,7 +3586,7 @@ pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitMut")
             .field("v", &self.v)
             .field("finished", &self.finished)
@@ -3501,7 +3683,7 @@ pub struct RSplit<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplit<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplit")
             .field("v", &self.inner.v)
             .field("finished", &self.inner.finished)
@@ -3557,7 +3739,7 @@ pub struct RSplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplitMut")
             .field("v", &self.inner.v)
             .field("finished", &self.inner.finished)
@@ -3643,7 +3825,7 @@ pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitN<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitN")
             .field("inner", &self.inner)
             .finish()
@@ -3665,7 +3847,7 @@ pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplitN<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplitN")
             .field("inner", &self.inner)
             .finish()
@@ -3686,7 +3868,7 @@ pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitNMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitNMut")
             .field("inner", &self.inner)
             .finish()
@@ -3708,7 +3890,7 @@ pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplitNMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplitNMut")
             .field("inner", &self.inner)
             .finish()
@@ -3833,6 +4015,19 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
             let ret = Some(&self.v[self.v.len()-self.size..]);
             self.v = &self.v[..self.v.len()-1];
             ret
+        }
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let (end, overflow) = self.v.len().overflowing_sub(n);
+        if end < self.size || overflow {
+            self.v = &[];
+            None
+        } else {
+            let ret = &self.v[end-self.size..end];
+            self.v = &self.v[..end-1];
+            Some(ret)
         }
     }
 }
@@ -4361,8 +4556,8 @@ pub struct RChunks<'a, T:'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> Clone for RChunks<'a, T> {
-    fn clone(&self) -> RChunks<'a, T> {
+impl<T> Clone for RChunks<'_, T> {
+    fn clone(&self) -> Self {
         RChunks {
             v: self.v,
             chunk_size: self.chunk_size,
@@ -4451,13 +4646,13 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> ExactSizeIterator for RChunks<'a, T> {}
+impl<T> ExactSizeIterator for RChunks<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunks<'a, T> {}
+unsafe impl<T> TrustedLen for RChunks<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunks<'a, T> {}
+impl<T> FusedIterator for RChunks<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4576,13 +4771,13 @@ impl<'a, T> DoubleEndedIterator for RChunksMut<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> ExactSizeIterator for RChunksMut<'a, T> {}
+impl<T> ExactSizeIterator for RChunksMut<'_, T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunksMut<'a, T> {}
+unsafe impl<T> TrustedLen for RChunksMut<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunksMut<'a, T> {}
+impl<T> FusedIterator for RChunksMut<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4707,10 +4902,10 @@ impl<'a, T> ExactSizeIterator for RChunksExact<'a, T> {
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunksExact<'a, T> {}
+unsafe impl<T> TrustedLen for RChunksExact<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunksExact<'a, T> {}
+impl<T> FusedIterator for RChunksExact<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]
@@ -4818,17 +5013,17 @@ impl<'a, T> DoubleEndedIterator for RChunksExactMut<'a, T> {
 }
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> ExactSizeIterator for RChunksExactMut<'a, T> {
+impl<T> ExactSizeIterator for RChunksExactMut<'_, T> {
     fn is_empty(&self) -> bool {
         self.v.is_empty()
     }
 }
 
 #[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<'a, T> TrustedLen for RChunksExactMut<'a, T> {}
+unsafe impl<T> TrustedLen for RChunksExactMut<'_, T> {}
 
 #[stable(feature = "rchunks", since = "1.31.0")]
-impl<'a, T> FusedIterator for RChunksExactMut<'a, T> {}
+impl<T> FusedIterator for RChunksExactMut<'_, T> {}
 
 #[doc(hidden)]
 #[stable(feature = "rchunks", since = "1.31.0")]

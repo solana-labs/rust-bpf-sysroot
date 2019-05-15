@@ -2,12 +2,12 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use cmp;
-use fmt;
-use mem;
-use usize;
-use ptr::{self, NonNull};
-use num::NonZeroUsize;
+use crate::cmp;
+use crate::fmt;
+use crate::mem;
+use crate::usize;
+use crate::ptr::{self, NonNull};
+use crate::num::NonZeroUsize;
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.
@@ -338,7 +338,7 @@ pub struct LayoutErr {
 // (we need this for downstream impl of trait Error)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 impl fmt::Display for LayoutErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
@@ -354,7 +354,7 @@ pub struct AllocErr;
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for AllocErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("memory allocation failed")
     }
 }
@@ -376,7 +376,7 @@ impl CannotReallocInPlace {
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for CannotReallocInPlace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.description())
     }
 }
@@ -420,7 +420,7 @@ impl fmt::Display for CannotReallocInPlace {
 /// }
 /// ```
 ///
-/// # Unsafety
+/// # Safety
 ///
 /// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
@@ -643,7 +643,7 @@ pub unsafe trait GlobalAlloc {
 ///    currently allocated via an allocator `a`, then it is legal to
 ///    use that layout to deallocate it, i.e., `a.dealloc(ptr, k);`.
 ///
-/// # Unsafety
+/// # Safety
 ///
 /// The `Alloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:

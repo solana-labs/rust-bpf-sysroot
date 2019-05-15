@@ -1,11 +1,9 @@
-#![unstable(feature = "futures_api",
-            reason = "futures in libcore are unstable",
-            issue = "50547")]
+#![stable(feature = "futures_api", since = "1.36.0")]
 
-use marker::Unpin;
-use ops;
-use pin::Pin;
-use task::{Poll, LocalWaker};
+use crate::marker::Unpin;
+use crate::ops;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
 
 /// A future represents an asynchronous computation.
 ///
@@ -18,14 +16,18 @@ use task::{Poll, LocalWaker};
 /// The core method of future, `poll`, *attempts* to resolve the future into a
 /// final value. This method does not block if the value is not ready. Instead,
 /// the current task is scheduled to be woken up when it's possible to make
-/// further progress by `poll`ing again. The wake up is performed using
-/// `cx.waker()`, a handle for waking up the current task.
+/// further progress by `poll`ing again. The `context` passed to the `poll`
+/// method can provide a `Waker`, which is a handle for waking up the current
+/// task.
 ///
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `await!` the value.
+#[doc(spotlight)]
 #[must_use = "futures do nothing unless polled"]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub trait Future {
-    /// The result of the `Future`.
+    /// The type of value produced on completion.
+    #[stable(feature = "futures_api", since = "1.36.0")]
     type Output;
 
     /// Attempt to resolve the future to a final value, registering
@@ -42,17 +44,18 @@ pub trait Future {
     /// Once a future has finished, clients should not `poll` it again.
     ///
     /// When a future is not ready yet, `poll` returns `Poll::Pending` and
-    /// stores a clone of the [`LocalWaker`] to be woken once the future can
-    /// make progress. For example, a future waiting for a socket to become
-    /// readable would call `.clone()` on the [`LocalWaker`] and store it.
+    /// stores a clone of the [`Waker`] copied from the current [`Context`].
+    /// This [`Waker`] is then woken once the future can make progress.
+    /// For example, a future waiting for a socket to become
+    /// readable would call `.clone()` on the [`Waker`] and store it.
     /// When a signal arrives elsewhere indicating that the socket is readable,
-    /// `[LocalWaker::wake]` is called and the socket future's task is awoken.
+    /// [`Waker::wake`] is called and the socket future's task is awoken.
     /// Once a task has been woken up, it should attempt to `poll` the future
     /// again, which may or may not produce a final value.
     ///
-    /// Note that on multiple calls to `poll`, only the most recent
-    /// [`LocalWaker`] passed to `poll` should be scheduled to receive a
-    /// wakeup.
+    /// Note that on multiple calls to `poll`, only the [`Waker`] from the
+    /// [`Context`] passed to the most recent call should be scheduled to
+    /// receive a wakeup.
     ///
     /// # Runtime characteristics
     ///
@@ -67,47 +70,42 @@ pub trait Future {
     /// typically do *not* suffer the same problems of "all wakeups must poll
     /// all events"; they are more like `epoll(4)`.
     ///
-    /// An implementation of `poll` should strive to return quickly, and must
-    /// *never* block. Returning quickly prevents unnecessarily clogging up
+    /// An implementation of `poll` should strive to return quickly, and should
+    /// not block. Returning quickly prevents unnecessarily clogging up
     /// threads or event loops. If it is known ahead of time that a call to
     /// `poll` may end up taking awhile, the work should be offloaded to a
     /// thread pool (or something similar) to ensure that `poll` can return
     /// quickly.
     ///
-    /// # [`LocalWaker`], [`Waker`] and thread-safety
-    ///
-    /// The `poll` function takes a [`LocalWaker`], an object which knows how to
-    /// awaken the current task. [`LocalWaker`] is not `Send` nor `Sync`, so in
-    /// order to make thread-safe futures the [`LocalWaker::into_waker`] method
-    /// should be used to convert the [`LocalWaker`] into a thread-safe version.
-    /// [`LocalWaker::wake`] implementations have the ability to be more
-    /// efficient, however, so when thread safety is not necessary,
-    /// [`LocalWaker`] should be preferred.
-    ///
     /// # Panics
     ///
-    /// Once a future has completed (returned `Ready` from `poll`),
-    /// then any future calls to `poll` may panic, block forever, or otherwise
-    /// cause bad behavior. The `Future` trait itself provides no guarantees
-    /// about the behavior of `poll` after a future has completed.
+    /// Once a future has completed (returned `Ready` from `poll`), calling its
+    /// `poll` method again may panic, block forever, or cause other kinds of
+    /// problems; the `Future` trait places no requirements on the effects of
+    /// such a call. However, as the `poll` method is not marked `unsafe`,
+    /// Rust's usual rules apply: calls must never cause undefined behavior
+    /// (memory corruption, incorrect use of `unsafe` functions, or the like),
+    /// regardless of the future's state.
     ///
     /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
     /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
-    /// [`LocalWaker`]: ../task/struct.LocalWaker.html
-    /// [`LocalWaker::into_waker`]: ../task/struct.LocalWaker.html#method.into_waker
-    /// [`LocalWaker::wake`]: ../task/struct.LocalWaker.html#method.wake
+    /// [`Context`]: ../task/struct.Context.html
     /// [`Waker`]: ../task/struct.Waker.html
-    fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output>;
+    /// [`Waker::wake`]: ../task/struct.Waker.html#method.wake
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 }
 
-impl<'a, F: ?Sized + Future + Unpin> Future for &'a mut F {
+#[stable(feature = "futures_api", since = "1.36.0")]
+impl<F: ?Sized + Future + Unpin> Future for &mut F {
     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-        F::poll(Pin::new(&mut **self), lw)
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        F::poll(Pin::new(&mut **self), cx)
     }
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl<P> Future for Pin<P>
 where
     P: Unpin + ops::DerefMut,
@@ -115,7 +113,7 @@ where
 {
     type Output = <<P as ops::Deref>::Target as Future>::Output;
 
-    fn poll(self: Pin<&mut Self>, lw: &LocalWaker) -> Poll<Self::Output> {
-        Pin::get_mut(self).as_mut().poll(lw)
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        Pin::get_mut(self).as_mut().poll(cx)
     }
 }

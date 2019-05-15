@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use core::time::Duration;
 
 #[test]

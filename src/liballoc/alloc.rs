@@ -34,6 +34,9 @@ extern "Rust" {
 /// This type implements the [`Alloc`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
+///
+/// Note: while this type is unstable, the functionality it provides can be
+/// accessed through the [free functions in `alloc`](index.html#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, Default, Debug)]
 pub struct Global;
@@ -249,6 +252,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(not(miri))] // Miri does not support benchmarks
     fn alloc_owned_small(b: &mut Bencher) {
         b.iter(|| {
             let _: Box<_> = box 10;

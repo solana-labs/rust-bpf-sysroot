@@ -4,18 +4,15 @@
 //!
 //! *[See also the array primitive type](../../std/primitive.array.html).*
 
-#![unstable(feature = "fixed_size_array",
-            reason = "traits and impls are better expressed through generic \
-                      integer constants",
-            issue = "27778")]
+#![stable(feature = "core_array", since = "1.36.0")]
 
-use borrow::{Borrow, BorrowMut};
-use cmp::Ordering;
-use convert::TryFrom;
-use fmt;
-use hash::{Hash, self};
-use marker::Unsize;
-use slice::{Iter, IterMut};
+use crate::borrow::{Borrow, BorrowMut};
+use crate::cmp::Ordering;
+use crate::convert::{Infallible, TryFrom};
+use crate::fmt;
+use crate::hash::{Hash, self};
+use crate::marker::Unsize;
+use crate::slice::{Iter, IterMut};
 
 /// Utility trait implemented only on arrays of fixed size
 ///
@@ -30,13 +27,17 @@ use slice::{Iter, IterMut};
 /// Note that the traits AsRef and AsMut provide similar methods for types that
 /// may not be fixed-size arrays. Implementors should prefer those traits
 /// instead.
+#[unstable(feature = "fixed_size_array", issue = "27778")]
 pub unsafe trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
+    #[unstable(feature = "fixed_size_array", issue = "27778")]
     fn as_slice(&self) -> &[T];
     /// Converts the array to mutable slice
+    #[unstable(feature = "fixed_size_array", issue = "27778")]
     fn as_mut_slice(&mut self) -> &mut [T];
 }
 
+#[unstable(feature = "fixed_size_array", issue = "27778")]
 unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
     #[inline]
     fn as_slice(&self) -> &[T] {
@@ -49,13 +50,14 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
 }
 
 /// The error type returned when a conversion from a slice to an array fails.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromSliceError(());
 
+#[stable(feature = "core_array", since = "1.36.0")]
 impl fmt::Display for TryFromSliceError {
     #[inline]
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.__description(), f)
     }
 }
@@ -69,6 +71,13 @@ impl TryFromSliceError {
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         "could not convert slice to array"
+    }
+}
+
+#[stable(feature = "try_from_slice_error", since = "1.36.0")]
+impl From<Infallible> for TryFromSliceError {
+    fn from(x: Infallible) -> TryFromSliceError {
+        match x {}
     }
 }
 
@@ -138,8 +147,8 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable(feature = "try_from", issue = "33417")]
-            impl<'a, T> TryFrom<&'a [T]> for [T; $N] where T: Copy {
+            #[stable(feature = "try_from", since = "1.34.0")]
+            impl<T> TryFrom<&[T]> for [T; $N] where T: Copy {
                 type Error = TryFromSliceError;
 
                 fn try_from(slice: &[T]) -> Result<[T; $N], TryFromSliceError> {
@@ -147,7 +156,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable(feature = "try_from", issue = "33417")]
+            #[stable(feature = "try_from", since = "1.34.0")]
             impl<'a, T> TryFrom<&'a [T]> for &'a [T; $N] {
                 type Error = TryFromSliceError;
 
@@ -161,7 +170,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable(feature = "try_from", issue = "33417")]
+            #[stable(feature = "try_from", since = "1.34.0")]
             impl<'a, T> TryFrom<&'a mut [T]> for &'a mut [T; $N] {
                 type Error = TryFromSliceError;
 
@@ -184,7 +193,7 @@ macro_rules! array_impls {
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T: fmt::Debug> fmt::Debug for [T; $N] {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     fmt::Debug::fmt(&&self[..], f)
                 }
             }

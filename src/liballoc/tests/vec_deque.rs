@@ -108,7 +108,6 @@ fn test_index() {
 
 #[test]
 #[should_panic]
-#[cfg(not(miri))]
 fn test_index_out_of_bounds() {
     let mut deq = VecDeque::new();
     for i in 1..4 {
@@ -907,24 +906,20 @@ fn test_append() {
     // normal append
     a.append(&mut b);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
-    #[cfg(not(miri))]
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
     // append nothing to something
     a.append(&mut b);
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
-    #[cfg(not(miri))]
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
     // append something to nothing
     b.append(&mut a);
     assert_eq!(b.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
-    #[cfg(not(miri))]
     assert_eq!(a.iter().cloned().collect::<Vec<_>>(), []);
 }
 
 #[test]
-#[cfg(not(miri))]
 fn test_append_permutations() {
     fn construct_vec_deque(
         push_back: usize,
@@ -948,7 +943,10 @@ fn test_append_permutations() {
         out
     }
 
+    #[cfg(not(miri))] // Miri is too slow
     const MAX: usize = 5;
+    #[cfg(miri)]
+    const MAX: usize = 3;
 
     // Many different permutations of both the `VecDeque` getting appended to
     // and the one getting appended are generated to check `append`.
@@ -1125,7 +1123,7 @@ fn test_reserve_exact_2() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -1227,7 +1225,7 @@ fn test_try_reserve() {
 }
 
 #[test]
-#[cfg(not(miri))]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.
@@ -1466,6 +1464,15 @@ fn test_try_fold_unit() {
     assert_eq!(Some(()), v.into_iter().try_fold((), |(), ()| Some(())));
 }
 
+
+#[test]
+fn test_try_fold_unit_none() {
+    let v: std::collections::VecDeque<()> = [(); 10].iter().cloned().collect();
+    let mut iter = v.into_iter();
+    assert!(iter.try_fold((), |_, _| None).is_none());
+    assert_eq!(iter.len(), 9);
+}
+
 #[test]
 fn test_try_fold_rotated() {
     let mut v: VecDeque<_> = (0..12).collect();
@@ -1477,4 +1484,59 @@ fn test_try_fold_rotated() {
         }
         assert_eq!(Ok::<_, ()>(66), v.iter().try_fold(0, |a, b| Ok(a + b)));
     }
+}
+
+#[test]
+fn test_try_fold_moves_iter() {
+    let v: VecDeque<_> = [10, 20, 30, 40, 100, 60, 70, 80, 90].iter().collect();
+    let mut iter = v.into_iter();
+    assert_eq!(iter.try_fold(0_i8, |acc, &x| acc.checked_add(x)), None);
+    assert_eq!(iter.next(), Some(&60));
+}
+
+#[test]
+fn test_try_fold_exhaust_wrap() {
+    let mut v = VecDeque::with_capacity(7);
+    v.push_back(1);
+    v.push_back(1);
+    v.push_back(1);
+    v.pop_front();
+    v.pop_front();
+    let mut iter = v.iter();
+    let _ = iter.try_fold(0, |_, _| Some(1));
+    assert!(iter.is_empty());
+}
+
+#[test]
+fn test_try_fold_wraparound() {
+    let mut v = VecDeque::with_capacity(8);
+    v.push_back(7);
+    v.push_back(8);
+    v.push_back(9);
+    v.push_front(2);
+    v.push_front(1);
+    let mut iter = v.iter();
+    let _ = iter.find(|&&x| x == 2);
+    assert_eq!(Some(&7), iter.next());
+}
+
+#[test]
+fn test_try_rfold_rotated() {
+    let mut v: VecDeque<_> = (0..12).collect();
+    for n in 0..10 {
+        if n & 1 == 0 {
+            v.rotate_left(n);
+        } else {
+            v.rotate_right(n);
+        }
+        assert_eq!(Ok::<_, ()>(66), v.iter().try_rfold(0, |a, b| Ok(a + b)));
+    }
+}
+
+#[test]
+fn test_try_rfold_moves_iter() {
+    let v : VecDeque<_> = [10, 20, 30, 40, 100, 60, 70, 80, 90].iter().collect();
+    let mut iter = v.into_iter();
+    assert_eq!(iter.try_rfold(0_i8, |acc, &x| acc.checked_add(x)), None);
+    assert_eq!(iter.next_back(), Some(&70));
 }

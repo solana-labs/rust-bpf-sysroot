@@ -109,7 +109,7 @@ impl<K, V> LeafNode<K, V> {
             keys: uninitialized_array![_; CAPACITY],
             vals: uninitialized_array![_; CAPACITY],
             parent: ptr::null(),
-            parent_idx: MaybeUninit::uninitialized(),
+            parent_idx: MaybeUninit::uninit(),
             len: 0
         }
     }
@@ -129,7 +129,7 @@ unsafe impl Sync for NodeHeader<(), ()> {}
 // ever take a pointer past the first key.
 static EMPTY_ROOT_NODE: NodeHeader<(), ()> = NodeHeader {
     parent: ptr::null(),
-    parent_idx: MaybeUninit::uninitialized(),
+    parent_idx: MaybeUninit::uninit(),
     len: 0,
     keys_start: [],
 };
@@ -261,7 +261,7 @@ impl<K, V> Root<K, V> {
             -> NodeRef<marker::Mut<'_>, K, V, marker::Internal> {
         debug_assert!(!self.is_shared_root());
         let mut new_node = Box::new(unsafe { InternalNode::new() });
-        new_node.edges[0].set(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
+        new_node.edges[0].write(unsafe { BoxedNode::from_ptr(self.node.as_ptr()) });
 
         self.node = BoxedNode::from_internal(new_node);
         self.height += 1;
@@ -453,7 +453,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
                     root: self.root,
                     _marker: PhantomData
                 },
-                idx: unsafe { usize::from(*self.as_header().parent_idx.get_ref()) },
+                idx: unsafe { usize::from(*self.as_header().parent_idx.as_ptr()) },
                 _marker: PhantomData
             })
         } else {
@@ -645,6 +645,8 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
     }
 
     fn into_key_slice_mut(mut self) -> &'a mut [K] {
+        // Same as for `into_key_slice` above, we try to avoid a run-time check
+        // (the alignment comparison will usually be performed at compile-time).
         if mem::align_of::<K>() > mem::align_of::<LeafNode<(), ()>>() && self.is_shared_root() {
             &mut []
         } else {
@@ -667,9 +669,26 @@ impl<'a, K: 'a, V: 'a, Type> NodeRef<marker::Mut<'a>, K, V, Type> {
         }
     }
 
-    fn into_slices_mut(self) -> (&'a mut [K], &'a mut [V]) {
-        let k = unsafe { ptr::read(&self) };
-        (k.into_key_slice_mut(), self.into_val_slice_mut())
+    fn into_slices_mut(mut self) -> (&'a mut [K], &'a mut [V]) {
+        debug_assert!(!self.is_shared_root());
+        // We cannot use the getters here, because calling the second one
+        // invalidates the reference returned by the first.
+        // More precisely, it is the call to `len` that is the culprit,
+        // because that creates a shared reference to the header, which *can*
+        // overlap with the keys (and even the values, for ZST keys).
+        unsafe {
+            let len = self.len();
+            let leaf = self.as_leaf_mut();
+            let keys = slice::from_raw_parts_mut(
+                MaybeUninit::first_ptr_mut(&mut (*leaf).keys),
+                len
+            );
+            let vals = slice::from_raw_parts_mut(
+                MaybeUninit::first_ptr_mut(&mut (*leaf).vals),
+                len
+            );
+            (keys, vals)
+        }
     }
 }
 
@@ -718,7 +737,7 @@ impl<'a, K, V> NodeRef<marker::Mut<'a>, K, V, marker::Internal> {
         unsafe {
             ptr::write(self.keys_mut().get_unchecked_mut(idx), key);
             ptr::write(self.vals_mut().get_unchecked_mut(idx), val);
-            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).set(edge.node);
+            self.as_internal_mut().edges.get_unchecked_mut(idx + 1).write(edge.node);
 
             (*self.as_leaf_mut()).len += 1;
 
@@ -1061,7 +1080,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         let mut child = self.descend();
         unsafe {
             (*child.as_leaf_mut()).parent = ptr;
-            (*child.as_leaf_mut()).parent_idx.set(idx);
+            (*child.as_leaf_mut()).parent_idx.write(idx);
         }
     }
 
@@ -1143,7 +1162,7 @@ impl<BorrowType, K, V>
         NodeRef {
             height: self.node.height - 1,
             node: unsafe {
-                self.node.as_internal().edges.get_unchecked(self.idx).get_ref().as_ptr()
+                (&*self.node.as_internal().edges.get_unchecked(self.idx).as_ptr()).as_ptr()
             },
             root: self.node.root,
             _marker: PhantomData

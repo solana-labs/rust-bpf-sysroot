@@ -1,3 +1,5 @@
+#![cfg(not(miri))] // Miri does not implement ldexp, which most tests here need
+
 use std::prelude::v1::*;
 use std::{str, i16, f32, f64, fmt};
 
@@ -1105,4 +1107,3 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
                format!("0.0000000000000000000099999999999999994515327145420957165172950370\
                           2787392447107715776066783064379706047475337982177734375{:0>79881}", ""));
 }
-

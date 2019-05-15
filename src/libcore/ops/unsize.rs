@@ -1,4 +1,4 @@
-use marker::Unsize;
+use crate::marker::Unsize;
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.
@@ -100,4 +100,3 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
-

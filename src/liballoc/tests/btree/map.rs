@@ -9,7 +9,10 @@ use super::DeterministicRng;
 #[test]
 fn test_basic_large() {
     let mut map = BTreeMap::new();
+    #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
+    #[cfg(miri)]
+    let size = 200;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -69,7 +72,10 @@ fn test_basic_small() {
 
 #[test]
 fn test_iter() {
+    #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
+    #[cfg(miri)]
+    let size = 200;
 
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -91,7 +97,10 @@ fn test_iter() {
 
 #[test]
 fn test_iter_rev() {
+    #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
+    #[cfg(miri)]
+    let size = 200;
 
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -127,7 +136,10 @@ fn test_values_mut() {
 
 #[test]
 fn test_iter_mixed() {
+    #[cfg(not(miri))] // Miri is too slow
     let size = 10000;
+    #[cfg(miri)]
+    let size = 200;
 
     // Forwards
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -249,7 +261,10 @@ fn test_range_backwards_4() {
 
 #[test]
 fn test_range_1000() {
+    #[cfg(not(miri))] // Miri is too slow
     let size = 1000;
+    #[cfg(miri)]
+    let size = 200;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
@@ -286,7 +301,10 @@ fn test_range_borrowed_key() {
 
 #[test]
 fn test_range() {
+    #[cfg(not(miri))] // Miri is too slow
     let size = 200;
+    #[cfg(miri)]
+    let size = 30;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in 0..size {
@@ -305,7 +323,10 @@ fn test_range() {
 
 #[test]
 fn test_range_mut() {
+    #[cfg(not(miri))] // Miri is too slow
     let size = 200;
+    #[cfg(miri)]
+    let size = 30;
     let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
     for i in 0..size {
@@ -479,7 +500,10 @@ fn test_bad_zst() {
 #[test]
 fn test_clone() {
     let mut map = BTreeMap::new();
+    #[cfg(not(miri))] // Miri is too slow
     let size = 100;
+    #[cfg(miri)]
+    let size = 30;
     assert_eq!(map.len(), 0);
 
     for i in 0..size {
@@ -631,6 +655,7 @@ create_append_test!(test_append_145, 145);
 create_append_test!(test_append_170, 170);
 create_append_test!(test_append_181, 181);
 create_append_test!(test_append_239, 239);
+#[cfg(not(miri))] // Miri is too slow
 create_append_test!(test_append_1700, 1700);
 
 fn rand_data(len: usize) -> Vec<(u32, u32)> {

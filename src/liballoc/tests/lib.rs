@@ -4,13 +4,10 @@
 #![feature(exact_size_is_empty)]
 #![feature(pattern)]
 #![feature(repeat_generic_slice)]
-#![feature(slice_sort_by_cached_key)]
 #![feature(try_reserve)]
 #![feature(unboxed_closures)]
 #![feature(vecdeque_rotate)]
-
-extern crate core;
-extern crate rand;
+#![deny(rust_2018_idioms)]
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;

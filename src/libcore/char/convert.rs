@@ -1,9 +1,10 @@
 //! Character conversions.
 
-use convert::TryFrom;
-use fmt;
-use mem::transmute;
-use str::FromStr;
+use crate::convert::TryFrom;
+use crate::fmt;
+use crate::mem::transmute;
+use crate::str::FromStr;
+
 use super::MAX;
 
 /// Converts a `u32` to a `char`.
@@ -192,7 +193,7 @@ enum CharErrorKind {
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
 impl fmt::Display for ParseCharError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(f)
     }
 }
@@ -218,7 +219,7 @@ impl FromStr for char {
 }
 
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl TryFrom<u32> for char {
     type Error = CharTryFromError;
 
@@ -233,13 +234,13 @@ impl TryFrom<u32> for char {
 }
 
 /// The error type returned when a conversion from u32 to char fails.
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct CharTryFromError(());
 
-#[unstable(feature = "try_from", issue = "33417")]
+#[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for CharTryFromError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "converted integer out of range for `char`".fmt(f)
     }
 }
@@ -315,4 +316,3 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
         None
     }
 }
-

@@ -486,7 +486,7 @@ impl String {
     /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     /// [`as_bytes`]: struct.String.html#method.as_bytes
     /// [`FromUtf8Error`]: struct.FromUtf8Error.html
-    /// [`Err`]: ../../stdresult/enum.Result.html#variant.Err
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
@@ -1200,8 +1200,8 @@ impl String {
     /// Retains only the characters specified by the predicate.
     ///
     /// In other words, remove all characters `c` such that `f(c)` returns `false`.
-    /// This method operates in place and preserves the order of the retained
-    /// characters.
+    /// This method operates in place, visiting each character exactly once in the
+    /// original order, and preserves the order of the retained characters.
     ///
     /// # Examples
     ///
@@ -1211,6 +1211,16 @@ impl String {
     /// s.retain(|c| c != '_');
     ///
     /// assert_eq!(s, "foobar");
+    /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// let mut s = String::from("abcde");
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// s.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(s, "bce");
     /// ```
     #[inline]
     #[stable(feature = "string_retain", since = "1.26.0")]
@@ -2073,48 +2083,17 @@ impl ops::DerefMut for String {
 /// [`String`]: struct.String.html
 /// [`from_str`]: ../../std/str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
-#[derive(Copy)]
-pub enum ParseError {}
+pub type ParseError = core::convert::Infallible;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for String {
-    type Err = ParseError;
+    type Err = core::convert::Infallible;
     #[inline]
     fn from_str(s: &str) -> Result<String, ParseError> {
         Ok(String::from(s))
     }
 }
 
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Clone for ParseError {
-    fn clone(&self) -> ParseError {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl fmt::Debug for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl fmt::Display for ParseError {
-    fn fmt(&self, _: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl PartialEq for ParseError {
-    fn eq(&self, _: &ParseError) -> bool {
-        match *self {}
-    }
-}
-
-#[stable(feature = "str_parse_error", since = "1.5.0")]
-impl Eq for ParseError {}
 
 /// A trait for converting a value to a `String`.
 ///
@@ -2203,9 +2182,9 @@ impl AsRef<[u8]> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for String {
+impl From<&str> for String {
     #[inline]
-    fn from(s: &'a str) -> String {
+    fn from(s: &str) -> String {
         s.to_owned()
     }
 }

@@ -932,6 +932,11 @@ impl<T: ?Sized + PartialEq> RcEqIdent<T> for Rc<T> {
     }
 }
 
+/// We're doing this specialization here, and not as a more general optimization on `&T`, because it
+/// would otherwise add a cost to all equality checks on refs. We assume that `Rc`s are used to
+/// store large values, that are slow to clone, but also heavy to check for equality, causing this
+/// cost to pay off more easily. It's also more likely to have two `Rc` clones, that point to
+/// the same value, than two `&T`s.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> RcEqIdent<T> for Rc<T> {
     #[inline]
@@ -1145,7 +1150,7 @@ impl<T> From<T> for Rc<T> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
+impl<T: Clone> From<&[T]> for Rc<[T]> {
     #[inline]
     fn from(v: &[T]) -> Rc<[T]> {
         <Self as RcFromSlice<T>>::from_slice(v)
@@ -1153,7 +1158,7 @@ impl<'a, T: Clone> From<&'a [T]> for Rc<[T]> {
 }
 
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<'a> From<&'a str> for Rc<str> {
+impl From<&str> for Rc<str> {
     #[inline]
     fn from(v: &str) -> Rc<str> {
         let rc = Rc::<[u8]>::from(v.as_bytes());

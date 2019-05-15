@@ -1377,6 +1377,11 @@ impl<T: ?Sized + PartialEq> ArcEqIdent<T> for Arc<T> {
     }
 }
 
+/// We're doing this specialization here, and not as a more general optimization on `&T`, because it
+/// would otherwise add a cost to all equality checks on refs. We assume that `Arc`s are used to
+/// store large values, that are slow to clone, but also heavy to check for equality, causing this
+/// cost to pay off more easily. It's also more likely to have two `Arc` clones, that point to
+/// the same value, than two `&T`s.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> ArcEqIdent<T> for Arc<T> {
     #[inline]
@@ -1678,6 +1683,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
+    #[cfg(not(miri))] // Miri does not support threads
     fn manually_share_arc() {
         let v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
         let arc_v = Arc::new(v);
@@ -1982,6 +1988,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
+    #[cfg(not(miri))] // Miri does not support threads
     fn test_weak_count_locked() {
         let mut a = Arc::new(atomic::AtomicBool::new(false));
         let a2 = a.clone();

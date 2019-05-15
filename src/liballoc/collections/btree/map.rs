@@ -1218,8 +1218,8 @@ impl<K, V> ExactSizeIterator for Iter<'_, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Iter<'a, K, V> {
-    fn clone(&self) -> Iter<'a, K, V> {
+impl<K, V> Clone for Iter<'_, K, V> {
+    fn clone(&self) -> Self {
         Iter {
             range: self.range.clone(),
             length: self.length,
@@ -1441,8 +1441,8 @@ impl<K, V> ExactSizeIterator for Keys<'_, K, V> {
 impl<K, V> FusedIterator for Keys<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Keys<'a, K, V> {
-    fn clone(&self) -> Keys<'a, K, V> {
+impl<K, V> Clone for Keys<'_, K, V> {
+    fn clone(&self) -> Self {
         Keys { inner: self.inner.clone() }
     }
 }
@@ -1478,8 +1478,8 @@ impl<K, V> ExactSizeIterator for Values<'_, K, V> {
 impl<K, V> FusedIterator for Values<'_, K, V> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V> Clone for Values<'a, K, V> {
-    fn clone(&self) -> Values<'a, K, V> {
+impl<K, V> Clone for Values<'_, K, V> {
+    fn clone(&self) -> Self {
         Values { inner: self.inner.clone() }
     }
 }
@@ -1606,8 +1606,8 @@ impl<'a, K, V> Range<'a, K, V> {
 impl<K, V> FusedIterator for Range<'_, K, V> {}
 
 #[stable(feature = "btree_range", since = "1.17.0")]
-impl<'a, K, V> Clone for Range<'a, K, V> {
-    fn clone(&self) -> Range<'a, K, V> {
+impl<K, V> Clone for Range<'_, K, V> {
+    fn clone(&self) -> Self {
         Range {
             front: self.front,
             back: self.back,
@@ -1634,9 +1634,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
         let mut cur_handle = match handle.right_kv() {
             Ok(kv) => {
-                let (k, v) = ptr::read(&kv).into_kv_mut();
-                self.front = kv.right_edge();
-                return (k, v);
+                self.front = ptr::read(&kv).right_edge();
+                // Doing the descend invalidates the references returned by `into_kv_mut`,
+                // so we have to do this last.
+                let (k, v) = kv.into_kv_mut();
+                return (k, v); // coerce k from `&mut K` to `&K`
             }
             Err(last_edge) => {
                 let next_level = last_edge.into_node().ascend().ok();
@@ -1647,9 +1649,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         loop {
             match cur_handle.right_kv() {
                 Ok(kv) => {
-                    let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.front = first_leaf_edge(kv.right_edge().descend());
-                    return (k, v);
+                    self.front = first_leaf_edge(ptr::read(&kv).right_edge().descend());
+                    // Doing the descend invalidates the references returned by `into_kv_mut`,
+                    // so we have to do this last.
+                    let (k, v) = kv.into_kv_mut();
+                    return (k, v); // coerce k from `&mut K` to `&K`
                 }
                 Err(last_edge) => {
                     let next_level = last_edge.into_node().ascend().ok();
@@ -1680,9 +1684,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
 
         let mut cur_handle = match handle.left_kv() {
             Ok(kv) => {
-                let (k, v) = ptr::read(&kv).into_kv_mut();
-                self.back = kv.left_edge();
-                return (k, v);
+                self.back = ptr::read(&kv).left_edge();
+                // Doing the descend invalidates the references returned by `into_kv_mut`,
+                // so we have to do this last.
+                let (k, v) = kv.into_kv_mut();
+                return (k, v); // coerce k from `&mut K` to `&K`
             }
             Err(last_edge) => {
                 let next_level = last_edge.into_node().ascend().ok();
@@ -1693,9 +1699,11 @@ impl<'a, K, V> RangeMut<'a, K, V> {
         loop {
             match cur_handle.left_kv() {
                 Ok(kv) => {
-                    let (k, v) = ptr::read(&kv).into_kv_mut();
-                    self.back = last_leaf_edge(kv.left_edge().descend());
-                    return (k, v);
+                    self.back = last_leaf_edge(ptr::read(&kv).left_edge().descend());
+                    // Doing the descend invalidates the references returned by `into_kv_mut`,
+                    // so we have to do this last.
+                    let (k, v) = kv.into_kv_mut();
+                    return (k, v); // coerce k from `&mut K` to `&K`
                 }
                 Err(last_edge) => {
                     let next_level = last_edge.into_node().ascend().ok();
@@ -1719,9 +1727,9 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
-        for (k, v) in iter {
+        iter.into_iter().for_each(move |(k, v)| {
             self.insert(k, v);
-        }
+        });
     }
 }
 

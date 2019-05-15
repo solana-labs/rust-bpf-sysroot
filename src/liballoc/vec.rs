@@ -937,8 +937,8 @@ impl<T> Vec<T> {
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
-    /// This method operates in place and preserves the order of the retained
-    /// elements.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
     ///
     /// # Examples
     ///
@@ -946,6 +946,16 @@ impl<T> Vec<T> {
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.retain(|&x| x%2 == 0);
     /// assert_eq!(vec, [2, 4]);
+    /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3, 4, 5];
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// vec.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(vec, [2, 3, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn retain<F>(&mut self, mut f: F)
@@ -1260,7 +1270,7 @@ impl<T> Vec<T> {
     /// This method uses a closure to create new values on every push. If
     /// you'd rather [`Clone`] a given value, use [`resize`]. If you want
     /// to use the [`Default`] trait to generate values, you can pass
-    /// [`Default::default()`] as the second argument..
+    /// [`Default::default()`] as the second argument.
     ///
     /// # Examples
     ///
@@ -1365,6 +1375,7 @@ impl<T: Default> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![allow(deprecated)]
     /// #![feature(vec_resize_default)]
     ///
     /// let mut vec = vec![1, 2, 3];
@@ -1381,6 +1392,9 @@ impl<T: Default> Vec<T> {
     /// [`Default`]: ../../std/default/trait.Default.html
     /// [`Clone`]: ../../std/clone/trait.Clone.html
     #[unstable(feature = "vec_resize_default", issue = "41758")]
+    #[rustc_deprecated(reason = "This is moving towards being removed in favor \
+        of `.resize_with(Default::default)`.  If you disagree, please comment \
+        in the tracking issue.", since = "1.33.0")]
     pub fn resize_default(&mut self, new_len: usize) {
         let len = self.len();
 
@@ -1606,6 +1620,7 @@ impl_is_zero!(u64, |x| x == 0);
 impl_is_zero!(u128, |x| x == 0);
 impl_is_zero!(usize, |x| x == 0);
 
+impl_is_zero!(bool, |x| x == false);
 impl_is_zero!(char, |x| x == '\0');
 
 impl_is_zero!(f32, |x: f32| x.to_bits() == 0);
@@ -2177,25 +2192,25 @@ impl<T> AsMut<[T]> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
+impl<T: Clone> From<&[T]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: &'a [T]) -> Vec<T> {
+    fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
     }
     #[cfg(test)]
-    fn from(s: &'a [T]) -> Vec<T> {
+    fn from(s: &[T]) -> Vec<T> {
         crate::slice::to_vec(s)
     }
 }
 
 #[stable(feature = "vec_from_mut", since = "1.19.0")]
-impl<'a, T: Clone> From<&'a mut [T]> for Vec<T> {
+impl<T: Clone> From<&mut [T]> for Vec<T> {
     #[cfg(not(test))]
-    fn from(s: &'a mut [T]) -> Vec<T> {
+    fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
     }
     #[cfg(test)]
-    fn from(s: &'a mut [T]) -> Vec<T> {
+    fn from(s: &mut [T]) -> Vec<T> {
         crate::slice::to_vec(s)
     }
 }
@@ -2226,8 +2241,8 @@ impl<T> From<Vec<T>> for Box<[T]> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for Vec<u8> {
-    fn from(s: &'a str) -> Vec<u8> {
+impl From<&str> for Vec<u8> {
+    fn from(s: &str) -> Vec<u8> {
         From::from(s.as_bytes())
     }
 }
@@ -2455,11 +2470,30 @@ pub struct Drain<'a, T: 'a> {
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
-impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
+impl<T: fmt::Debug> fmt::Debug for Drain<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain")
          .field(&self.iter.as_slice())
          .finish()
+    }
+}
+
+impl<'a, T> Drain<'a, T> {
+    /// Returns the remaining items of this iterator as a slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(vec_drain_as_slice)]
+    /// let mut vec = vec!['a', 'b', 'c'];
+    /// let mut drain = vec.drain(..);
+    /// assert_eq!(drain.as_slice(), &['a', 'b', 'c']);
+    /// let _ = drain.next().unwrap();
+    /// assert_eq!(drain.as_slice(), &['b', 'c']);
+    /// ```
+    #[unstable(feature = "vec_drain_as_slice", reason = "recently added", issue = "58957")]
+    pub fn as_slice(&self) -> &[T] {
+        self.iter.as_slice()
     }
 }
 

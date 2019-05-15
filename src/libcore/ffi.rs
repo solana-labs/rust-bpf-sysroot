@@ -4,7 +4,7 @@
 
 //! Utilities related to FFI bindings.
 
-use ::fmt;
+use crate::fmt;
 
 /// Equivalent to C's `void` type when used as a [pointer].
 ///
@@ -39,7 +39,7 @@ pub enum c_void {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for c_void {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("c_void")
     }
 }
@@ -47,7 +47,7 @@ impl fmt::Debug for c_void {
 /// Basic implementation of a `va_list`.
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
               not(target_arch = "x86_64")),
-          all(target_arch = "aarch4", target_os = "ios"),
+          all(target_arch = "aarch64", target_os = "ios"),
           windows))]
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
@@ -59,19 +59,20 @@ extern {
 
 #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
               not(target_arch = "x86_64")),
+          all(target_arch = "aarch64", target_os = "ios"),
           windows))]
 impl fmt::Debug for VaListImpl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "va_list* {:p}", self)
     }
 }
 
 /// AArch64 ABI implementation of a `va_list`. See the
-/// [Aarch64 Procedure Call Standard] for more details.
+/// [AArch64 Procedure Call Standard] for more details.
 ///
 /// [AArch64 Procedure Call Standard]:
 /// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
-#[cfg(all(target_arch = "aarch64", not(windows)))]
+#[cfg(all(target_arch = "aarch64", not(target_os = "ios"), not(windows)))]
 #[repr(C)]
 #[derive(Debug)]
 #[unstable(feature = "c_variadic",
@@ -79,9 +80,9 @@ impl fmt::Debug for VaListImpl {
                      all supported platforms",
            issue = "44930")]
 struct VaListImpl {
-    stack: *mut (),
-    gr_top: *mut (),
-    vr_top: *mut (),
+    stack: *mut c_void,
+    gr_top: *mut c_void,
+    vr_top: *mut c_void,
     gr_offs: i32,
     vr_offs: i32,
 }
@@ -98,8 +99,8 @@ struct VaListImpl {
     gpr: u8,
     fpr: u8,
     reserved: u16,
-    overflow_arg_area: *mut (),
-    reg_save_area: *mut (),
+    overflow_arg_area: *mut c_void,
+    reg_save_area: *mut c_void,
 }
 
 /// x86_64 ABI implementation of a `va_list`.
@@ -113,8 +114,8 @@ struct VaListImpl {
 struct VaListImpl {
     gp_offset: i32,
     fp_offset: i32,
-    overflow_arg_area: *mut (),
-    reg_save_area: *mut (),
+    overflow_arg_area: *mut c_void,
+    reg_save_area: *mut c_void,
 }
 
 /// A wrapper for a `va_list`
@@ -189,18 +190,18 @@ impl<'a> VaList<'a> {
                reason = "the `c_variadic` feature has not been properly tested on \
                          all supported platforms",
                issue = "44930")]
-    pub unsafe fn copy<F, R>(&self, f: F) -> R
+    pub unsafe fn with_copy<F, R>(&self, f: F) -> R
             where F: for<'copy> FnOnce(VaList<'copy>) -> R {
         #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                       not(target_arch = "x86_64")),
-                  all(target_arch = "aarch4", target_os = "ios"),
+                  all(target_arch = "aarch64", target_os = "ios"),
                   windows))]
         let mut ap = va_copy(self);
         #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-                  not(windows)))]
+                  not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
         let mut ap_inner = va_copy(self);
         #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-                  not(windows)))]
+                  not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
         let mut ap = VaList(&mut ap_inner);
         let ret = f(VaList(ap.0));
         va_end(&mut ap);
@@ -211,18 +212,19 @@ impl<'a> VaList<'a> {
 extern "rust-intrinsic" {
     /// Destroy the arglist `ap` after initialization with `va_start` or
     /// `va_copy`.
-    fn va_end(ap: &mut VaList);
+    fn va_end(ap: &mut VaList<'_>);
 
     /// Copies the current location of arglist `src` to the arglist `dst`.
     #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
                   not(target_arch = "x86_64")),
+              all(target_arch = "aarch64", target_os = "ios"),
               windows))]
     fn va_copy<'a>(src: &VaList<'a>) -> VaList<'a>;
     #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
-              not(windows)))]
-    fn va_copy(src: &VaList) -> VaListImpl;
+              not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
+    fn va_copy(src: &VaList<'_>) -> VaListImpl;
 
     /// Loads an argument of type `T` from the `va_list` `ap` and increment the
     /// argument `ap` points to.
-    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaList) -> T;
+    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaList<'_>) -> T;
 }

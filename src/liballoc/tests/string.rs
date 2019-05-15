@@ -1,5 +1,3 @@
-#![cfg(not(miri))]
-
 use std::borrow::Cow;
 use std::collections::CollectionAllocErr::*;
 use std::mem::size_of;
@@ -56,11 +54,11 @@ fn test_from_utf8() {
 #[test]
 fn test_from_utf8_lossy() {
     let xs = b"hello";
-    let ys: Cow<str> = "hello".into_cow();
+    let ys: Cow<'_, str> = "hello".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = "ศไทย中华Việt Nam".as_bytes();
-    let ys: Cow<str> = "ศไทย中华Việt Nam".into_cow();
+    let ys: Cow<'_, str> = "ศไทย中华Việt Nam".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = b"Hello\xC2 There\xFF Goodbye";
@@ -525,6 +523,7 @@ fn test_reserve_exact() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve() {
 
     // These are the interesting cases:
@@ -602,6 +601,7 @@ fn test_try_reserve() {
 }
 
 #[test]
+#[cfg(not(miri))] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
 
     // This is exactly the same as test_try_reserve with the method changed.
