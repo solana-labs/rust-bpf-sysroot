@@ -1,8 +1,8 @@
 [submodule "src/stdsimd"]
 	path = src/stdsimd
 	url = https://github.com/solana-labs/stdsimd.git
-	branch = master
+	branch = v0.1
 [submodule "src/compiler-builtins"]
 	path = src/compiler-builtins
-	url = https://github.com/solana-labs/compiler-builtins.git
-	branch = master
+	url = git@github.com:solana-labs/compiler-builtins.git
+	branch = v0.1
