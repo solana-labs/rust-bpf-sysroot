@@ -4,6 +4,10 @@
 
 Rust sysroot source for Berkley Packet Filter Rust programs
 
+Contains submodules, to sync use:
+
+```git clone --recurse-submodules ```
+
 ---
 
 Building Rust modules require a collection of standard libraries that provide the fundamentals of the Rust language.  These standard libraries include things like types and trait definitions, arithmetic operations, formatting definitions, structure definitions (slice, vec) and operations.  Typically Rust modules link in the `std` libraries which exposes the underlying operating system features like threads, display and file io, networking, etc...  
