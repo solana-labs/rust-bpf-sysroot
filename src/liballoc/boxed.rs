@@ -73,7 +73,7 @@ use core::borrow;
 use core::cmp::Ordering;
 use core::convert::From;
 use core::fmt;
-use core::future::Future;
+// use core::future::Future;
 use core::hash::{Hash, Hasher};
 use core::iter::{Iterator, FromIterator, FusedIterator};
 use core::marker::{Unpin, Unsize};
@@ -83,7 +83,7 @@ use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
 use core::ptr::{self, NonNull, Unique};
-use core::task::{Context, Poll};
+// use core::task::{Context, Poll};
 
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
@@ -911,11 +911,11 @@ impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
     }
 }
 
-#[stable(feature = "futures_api", since = "1.36.0")]
-impl<F: ?Sized + Future + Unpin> Future for Box<F> {
-    type Output = F::Output;
+// #[stable(feature = "futures_api", since = "1.36.0")]
+// impl<F: ?Sized + Future + Unpin> Future for Box<F> {
+//     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        F::poll(Pin::new(&mut *self), cx)
-    }
-}
+//     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+//         F::poll(Pin::new(&mut *self), cx)
+//     }
+// }
