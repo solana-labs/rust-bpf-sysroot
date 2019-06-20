@@ -1162,7 +1162,7 @@ impl<'a> Formatter<'a> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad_integral(&mut self,
                         is_nonnegative: bool,
-                        prefix: &str,
+                        //prefix: &str,
                         buf: &str)
                         -> Result {
         let mut width = buf.len();
@@ -1170,16 +1170,19 @@ impl<'a> Formatter<'a> {
         let mut sign = None;
         if !is_nonnegative {
             sign = Some('-'); width += 1;
-        } else if self.sign_plus() {
+        } else 
+        if self.sign_plus() {
             sign = Some('+'); width += 1;
         }
 
-        let prefix = if self.alternate() {
-            width += prefix.chars().count();
-            Some(prefix)
-        } else {
-            None
-        };
+        // TODO
+        let prefix = None;
+        // let prefix = if self.alternate() {
+        //     width += prefix.chars().count();
+        //     Some(prefix)
+        // } else {
+        //     None
+        // };
 
         // Writes the sign if it exists, and then the prefix if it was requested
         #[inline(never)]
