@@ -1,30 +1,58 @@
 #!/usr/bin/env bash
 
-set -ex
+mkdir -p "$(dirname "$0")"/dependencies
+cd "$(dirname "$0")"/dependencies
 
 if [[ "$(uname)" = Darwin ]]; then
   machine=osx
-  triple=x86_64-apple-darwin
 else
   machine=linux
-  triple=x86_64-unknown-linux-gnu
+fi
+
+download() {
+  declare url=$1
+  declare filename=$2
+  declare progress=$3
+
+  declare args=(
+    "$url" -O "$filename"
+    "--progress=dot:$progress"
+    "--retry-connrefused"
+    "--read-timeout=30"
+  )
+  wget "${args[@]}"
+}
+
+if [[ "$(uname)" = Darwin ]]; then
+  machine=osx
+else
+  machine=linux
+fi
+
+# Install xargo
+if [[ ! -r xargo.md ]]; then
+  cargo install xargo
+  xargo --version > xargo.md 2>&1
 fi
 
 # Install LLVM
-version=v0.0.8
-if [[ ! -f deps/llvm-native-$machine-$version.md ]]; then
+version=v0.0.10
+if [[ ! -f llvm-native-$machine-$version.md ]]; then
   (
     filename=solana-llvm-$machine.tar.bz2
 
     set -ex
-    rm -rf deps/llvm-native*
-    mkdir -p deps/llvm-native
-    cd deps/llvm-native
-    wget --progress=dot:giga https://github.com/solana-labs/llvm-builder/releases/download/$version/$filename
+    rm -rf llvm-native*
+    rm -rf xargo
+    mkdir -p llvm-native
+    cd llvm-native
+
+    base=https://github.com/solana-labs/llvm-builder/releases
+    download $base/download/$version/$filename $filename giga
     tar -jxf $filename
     rm -rf $filename
 
-    echo "https://github.com/solana-labs/llvm-builder/releases/tag/$version" > ../llvm-native-$machine-$version.md
+    echo "$base/tag/$version" > ../llvm-native-$machine-$version.md
   )
   exitcode=$?
   if [[ $exitcode -ne 0 ]]; then
@@ -33,56 +61,62 @@ if [[ ! -f deps/llvm-native-$machine-$version.md ]]; then
   fi
 fi
 
-# Install Rust BPF
-version=v0.0.2
-if [[ ! -f deps/rust-bpf-$machine-$version.md ]]; then
+# Install Rust-BPF
+version=v0.1.2
+if [[ ! -f rust-bpf-$machine-$version.md ]]; then
   (
     filename=solana-rust-bpf-$machine.tar.bz2
 
     set -ex
-    rm -rf deps/rust-bpf
-    rm -rf deps/rust-bpf-$machine-*
-    mkdir -p deps/rust-bpf
-    pushd deps/rust-bpf
-    wget --progress=dot:giga https://github.com/solana-labs/rust-bpf-builder/releases/download/$version/$filename
+    rm -rf rust-bpf
+    rm -rf rust-bpf-$machine-*
+    rm -rf xargo
+    mkdir -p rust-bpf
+    pushd rust-bpf
+
+    base=https://github.com/solana-labs/rust-bpf-builder/releases
+    download $base/download/$version/$filename $filename giga
     tar -jxf $filename
     rm -rf $filename
     popd
 
-    # Override must be called from base sysroot directory
+    set -ex
+    ./rust-bpf/bin/rustc --print sysroot
+
     set +e
     rustup toolchain uninstall bpfsysroot
     set -e
-    rustup toolchain link bpfsysroot deps/rust-bpf
-    rustup override set bpfsysroot
+    rustup toolchain link bpfsysroot rust-bpf
 
-    echo "https://github.com/solana-labs/rust-bpf-builder/releases/tag/$version" > deps/rust-bpf-$machine-$version.md
+    echo "$base/tag/$version" > rust-bpf-$machine-$version.md
   )
   exitcode=$?
   if [[ $exitcode -ne 0 ]]; then
     rm -rf rust-bpf
     exit 1
-  fi  
+  fi
 fi
 
-set +e
-cargo install xargo
-set -e
+set -ex
+
+cd ..
 
 git submodule init
 git submodule update
 
-export RUSTFLAGS="$RUSTFLAGS \
-    -C lto=no -C opt-level=2 \
+export RUSTFLAGS="
+    -C lto=no \
+    -C opt-level=2 \
     -C link-arg=-Tbpf.ld \
     -C link-arg=-z -C link-arg=notext \
     -C link-arg=--Bdynamic \
     -C link-arg=-shared \
     -C link-arg=--entry=entrypoint \
-    -C linker=deps/llvm-native/bin/ld.lld"
+    -C linker=dependencies/llvm-native/bin/ld.lld"
 
 export XARGO_HOME="$PWD/target/xargo"
 export XARGO_RUST_SRC="$PWD/src"
-xargo build --target bpfel-unknown-unknown --release -v
+export RUSTUP_TOOLCHAIN=bpfsysroot
+xargo build --target bpfel-unknown-unknown --release
 
 { { set +x; } 2>/dev/null; echo Success; }
