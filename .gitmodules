@@ -5,4 +5,4 @@
 [submodule "src/compiler-builtins"]
 	path = src/compiler-builtins
 	url = https://github.com/solana-labs/compiler-builtins.git
-	branch = v0.2
+	branch = v0.4
