@@ -111,16 +111,16 @@ pub static CACHED_POW10: [(u64, i16, i16); 81] = [ // (f, e, k)
 #[doc(hidden)] pub const CACHED_POW10_FIRST_E: i16 = -1087;
 #[doc(hidden)] pub const CACHED_POW10_LAST_E: i16 = 1039;
 
-// #[doc(hidden)]
-// pub fn cached_power(alpha: i16, gamma: i16) -> (i16, Fp) {
-//     let offset = CACHED_POW10_FIRST_E as i32;
-//     let range = (CACHED_POW10.len() as i32) - 1;
-//     let domain = (CACHED_POW10_LAST_E - CACHED_POW10_FIRST_E) as i32;
-//     let idx = ((gamma as i32) - offset) * range / domain;
-//     let (f, e, k) = CACHED_POW10[idx as usize];
-//     debug_assert!(alpha <= e && e <= gamma);
-//     (k, Fp { f, e })
-// }
+#[doc(hidden)]
+pub fn cached_power(alpha: i16, gamma: i16) -> (i16, Fp) {
+    let offset = CACHED_POW10_FIRST_E as i32;
+    let range = (CACHED_POW10.len() as i32) - 1;
+    let domain = (CACHED_POW10_LAST_E - CACHED_POW10_FIRST_E) as i32;
+    let idx = ((gamma as i32) - offset) * range / domain;
+    let (f, e, k) = CACHED_POW10[idx as usize];
+    debug_assert!(alpha <= e && e <= gamma);
+    (k, Fp { f, e })
+}
 
 /// Given `x > 0`, returns `(k, 10^k)` such that `10^k <= x < 10^(k+1)`.
 #[doc(hidden)]

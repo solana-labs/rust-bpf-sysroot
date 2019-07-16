@@ -85,7 +85,7 @@ trait GenericRadix {
             MaybeUninit::first_ptr(buf),
             buf.len()
         )) };
-        f.pad_integral(is_nonnegative, /*Self::PREFIX,*/ buf)
+        f.pad_integral(is_nonnegative, Self::PREFIX, buf)
     }
 }
 
@@ -236,7 +236,7 @@ macro_rules! impl_Display {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))
             };
-            f.pad_integral(is_nonnegative, /*"",*/ buf_slice)
+            f.pad_integral(is_nonnegative, "", buf_slice)
         }
 
         $(

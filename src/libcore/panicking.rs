@@ -53,14 +53,13 @@ pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[lang = "panic_bounds_check"]
 fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
-                     _index: usize, _len: usize) -> ! {
+                     index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
     }
 
-    // panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
-    //                        len, index), file_line_col)
-    panic_fmt(fmt::Arguments::new_v1(&[], &[]), file_line_col)
+    panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
+                           len, index), file_line_col)
 }
 
 #[cold]

@@ -192,7 +192,7 @@ pub mod borrow;
 pub mod any;
 pub mod array;
 pub mod ascii;
-//pub mod sync;
+//pub mod sync; // TODO needs atomics
 pub mod cell;
 pub mod char;
 pub mod panic;
@@ -202,7 +202,7 @@ pub mod iter;
 pub mod option;
 pub mod raw;
 pub mod result;
-//pub mod ffi;
+pub mod ffi;
 
 pub mod slice;
 pub mod str;
@@ -213,8 +213,8 @@ pub mod time;
 pub mod unicode;
 
 /* Async */
-//pub mod future;
-//pub mod task;
+pub mod future;
+pub mod task;
 
 /* Heap memory allocator trait */
 #[allow(missing_docs)]

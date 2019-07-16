@@ -126,7 +126,7 @@ pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 pub mod estimator;
 pub mod decoder;
 
-// /// Digit-generation algorithms.
+/// Digit-generation algorithms.
 // pub mod strategy {
 //     pub mod dragon;
 //     pub mod grisu;

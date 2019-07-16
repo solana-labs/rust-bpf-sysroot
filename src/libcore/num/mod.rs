@@ -5092,8 +5092,8 @@ impl fmt::Display for ParseIntError {
     }
 }
 
-// #[stable(feature = "rust1", since = "1.0.0")]
-// pub use crate::num::dec2flt::ParseFloatError;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use crate::num::dec2flt::ParseFloatError;
 
 // Conversion traits for primitive integer and float types
 // Conversions T -> T are covered by a blanket impl and therefore excluded
