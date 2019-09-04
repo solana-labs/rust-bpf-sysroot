@@ -1011,11 +1011,11 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
-                formatter.buf.write_str(*piece)?;
-                (arg.formatter)(arg.value, &mut formatter)?;
-                idx += 1;
-            }
+            // for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
+                // formatter.buf.write_str(*piece)?;
+                // (arg.formatter)(arg.value, &mut formatter)?;
+                // idx += 1;
+            // }
         }
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by

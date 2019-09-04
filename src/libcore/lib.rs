@@ -192,7 +192,7 @@ pub mod borrow;
 pub mod any;
 pub mod array;
 pub mod ascii;
-//pub mod sync; // TODO needs atomics
+pub mod sync;
 pub mod cell;
 pub mod char;
 pub mod panic;
