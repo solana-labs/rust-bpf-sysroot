@@ -4,13 +4,13 @@ use crate::sys::stack_overflow;
 use crate::sys::thread as imp;
 
 #[allow(dead_code)]
-pub unsafe fn start_thread(_main: *mut u8) {
+pub unsafe fn start_thread(main: *mut u8) {
     // Next, set up our stack overflow handler which may get triggered if we run
     // out of stack.
     let _handler = stack_overflow::Handler::new();
 
     // Finally, let's run some code.
-    // Box::from_raw(main as *mut Box<dyn FnOnce()>)()
+    Box::from_raw(main as *mut Box<dyn FnOnce()>)()
 }
 
 pub fn min_stack() -> usize {

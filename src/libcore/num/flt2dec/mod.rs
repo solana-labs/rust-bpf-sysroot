@@ -127,10 +127,11 @@ pub mod estimator;
 pub mod decoder;
 
 /// Digit-generation algorithms.
-// pub mod strategy {
-//     pub mod dragon;
-//     pub mod grisu;
-// }
+#[cfg(not(target_arch = "bpf"))]
+pub mod strategy {
+    pub mod dragon;
+    pub mod grisu;
+}
 
 /// The minimum size of buffer necessary for the shortest mode.
 ///

@@ -5,7 +5,8 @@
 use crate::cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
 use crate::marker::PhantomData;
 use crate::mem;
-// use crate::num::flt2dec;
+#[cfg(not(target_arch = "bpf"))]
+use crate::num::flt2dec;
 use crate::ops::Deref;
 use crate::result;
 use crate::slice;
@@ -1011,11 +1012,11 @@ pub fn write(output: &mut dyn Write, args: Arguments<'_>) -> Result {
     match args.fmt {
         None => {
             // We can use default formatting parameters for all arguments.
-            // for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
-                // formatter.buf.write_str(*piece)?;
-                // (arg.formatter)(arg.value, &mut formatter)?;
-                // idx += 1;
-            // }
+            for (arg, piece) in args.args.iter().zip(args.pieces.iter()) {
+                formatter.buf.write_str(*piece)?;
+                (arg.formatter)(arg.value, &mut formatter)?;
+                idx += 1;
+            }
         }
         Some(fmt) => {
             // Every spec has a corresponding argument that is preceded by
@@ -1328,85 +1329,87 @@ impl<'a> Formatter<'a> {
         Ok(PostPadding::new(self.fill, post_pad))
     }
 
-    // /// Takes the formatted parts and applies the padding.
-    // /// Assumes that the caller already has rendered the parts with required precision,
-    // /// so that `self.precision` can be ignored.
-    // fn pad_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
-    //     if let Some(mut width) = self.width {
-    //         // for the sign-aware zero padding, we render the sign first and
-    //         // behave as if we had no sign from the beginning.
-    //         let mut formatted = formatted.clone();
-    //         let old_fill = self.fill;
-    //         let old_align = self.align;
-    //         let mut align = old_align;
-    //         if self.sign_aware_zero_pad() {
-    //             // a sign always goes first
-    //             let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
-    //             self.buf.write_str(sign)?;
+    /// Takes the formatted parts and applies the padding.
+    /// Assumes that the caller already has rendered the parts with required precision,
+    /// so that `self.precision` can be ignored.
+    #[cfg(not(target_arch = "bpf"))]
+    fn pad_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
+        if let Some(mut width) = self.width {
+            // for the sign-aware zero padding, we render the sign first and
+            // behave as if we had no sign from the beginning.
+            let mut formatted = formatted.clone();
+            let old_fill = self.fill;
+            let old_align = self.align;
+            let mut align = old_align;
+            if self.sign_aware_zero_pad() {
+                // a sign always goes first
+                let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
+                self.buf.write_str(sign)?;
 
-    //             // remove the sign from the formatted parts
-    //             formatted.sign = b"";
-    //             width = width.saturating_sub(sign.len());
-    //             align = rt::v1::Alignment::Right;
-    //             self.fill = '0';
-    //             self.align = rt::v1::Alignment::Right;
-    //         }
+                // remove the sign from the formatted parts
+                formatted.sign = b"";
+                width = width.saturating_sub(sign.len());
+                align = rt::v1::Alignment::Right;
+                self.fill = '0';
+                self.align = rt::v1::Alignment::Right;
+            }
 
-    //         // remaining parts go through the ordinary padding process.
-    //         let len = formatted.len();
-    //         let ret = if width <= len { // no padding
-    //             self.write_formatted_parts(&formatted)
-    //         } else {
-    //             let post_padding = self.padding(width - len, align)?;
-    //             self.write_formatted_parts(&formatted)?;
-    //             post_padding.write(self.buf)
-    //         };
-    //         self.fill = old_fill;
-    //         self.align = old_align;
-    //         ret
-    //     } else {
-    //         // this is the common case and we take a shortcut
-    //         self.write_formatted_parts(formatted)
-    //     }
-    // }
+            // remaining parts go through the ordinary padding process.
+            let len = formatted.len();
+            let ret = if width <= len { // no padding
+                self.write_formatted_parts(&formatted)
+            } else {
+                let post_padding = self.padding(width - len, align)?;
+                self.write_formatted_parts(&formatted)?;
+                post_padding.write(self.buf)
+            };
+            self.fill = old_fill;
+            self.align = old_align;
+            ret
+        } else {
+            // this is the common case and we take a shortcut
+            self.write_formatted_parts(formatted)
+        }
+    }
 
-    // fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
-    //     fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
-    //         buf.write_str(unsafe { str::from_utf8_unchecked(s) })
-    //     }
+    #[cfg(not(target_arch = "bpf"))]
+    fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
+        fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
+            buf.write_str(unsafe { str::from_utf8_unchecked(s) })
+        }
 
-    //     if !formatted.sign.is_empty() {
-    //         write_bytes(self.buf, formatted.sign)?;
-    //     }
-    //     for part in formatted.parts {
-    //         match *part {
-    //             flt2dec::Part::Zero(mut nzeroes) => {
-    //                 const ZEROES: &str = // 64 zeroes
-    //                     "0000000000000000000000000000000000000000000000000000000000000000";
-    //                 while nzeroes > ZEROES.len() {
-    //                     self.buf.write_str(ZEROES)?;
-    //                     nzeroes -= ZEROES.len();
-    //                 }
-    //                 if nzeroes > 0 {
-    //                     self.buf.write_str(&ZEROES[..nzeroes])?;
-    //                 }
-    //             }
-    //             flt2dec::Part::Num(mut v) => {
-    //                 let mut s = [0; 5];
-    //                 let len = part.len();
-    //                 for c in s[..len].iter_mut().rev() {
-    //                     *c = b'0' + (v % 10) as u8;
-    //                     v /= 10;
-    //                 }
-    //                 write_bytes(self.buf, &s[..len])?;
-    //             }
-    //             flt2dec::Part::Copy(buf) => {
-    //                 write_bytes(self.buf, buf)?;
-    //             }
-    //         }
-    //     }
-    //     Ok(())
-    // }
+        if !formatted.sign.is_empty() {
+            write_bytes(self.buf, formatted.sign)?;
+        }
+        for part in formatted.parts {
+            match *part {
+                flt2dec::Part::Zero(mut nzeroes) => {
+                    const ZEROES: &str = // 64 zeroes
+                        "0000000000000000000000000000000000000000000000000000000000000000";
+                    while nzeroes > ZEROES.len() {
+                        self.buf.write_str(ZEROES)?;
+                        nzeroes -= ZEROES.len();
+                    }
+                    if nzeroes > 0 {
+                        self.buf.write_str(&ZEROES[..nzeroes])?;
+                    }
+                }
+                flt2dec::Part::Num(mut v) => {
+                    let mut s = [0; 5];
+                    let len = part.len();
+                    for c in s[..len].iter_mut().rev() {
+                        *c = b'0' + (v % 10) as u8;
+                        v /= 10;
+                    }
+                    write_bytes(self.buf, &s[..len])?;
+                }
+                flt2dec::Part::Copy(buf) => {
+                    write_bytes(self.buf, buf)?;
+                }
+            }
+        }
+        Ok(())
+    }
 
     /// Writes some data to the underlying buffer contained within this
     /// formatter.

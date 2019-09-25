@@ -51,14 +51,15 @@ extern "C" {
     fn sol_log_(message: *const u8, length: u64);
 }
 
-// pub fn sol_log_64(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64) {
-//     unsafe {
-//         sol_log_64_(arg1, arg2, arg3, arg4, arg5);
-//     }
-// }
-// extern "C" {
-//     fn sol_log_64_(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64);
-// }
+#[allow(dead_code)]
+pub fn sol_log_64(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64) {
+    unsafe {
+        sol_log_64_(arg1, arg2, arg3, arg4, arg5);
+    }
+}
+extern "C" {
+    fn sol_log_64_(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64);
+}
 
 pub fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
     // Message is ignored for now to avoid incurring formatting overhead
@@ -80,18 +81,18 @@ pub fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
                 );
             }
         }
-        None => unsafe { sol_panic_(ptr::null(), 0, 0, 0) },
+        None => unsafe { 
+            sol_panic_(ptr::null(), 0, 0, 0)
+        },
     }
 }
 extern "C" {
     fn sol_panic_(file: *const u8, len: u64, line: u64, column: u64) -> !;
 }
 
-
-
-#[cfg(not(test))]
-pub fn init() {
-}
+// #[cfg(not(test))]
+// pub fn init() {
+// }
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())

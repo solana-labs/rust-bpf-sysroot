@@ -444,7 +444,7 @@ impl Builder {
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
-    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
+    pub unsafe fn spawn_unchecked<'a, F, T>(self, _f: F) -> io::Result<JoinHandle<T>> where
         F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
     {
         let Builder { name, stack_size } = self;
@@ -456,7 +456,7 @@ impl Builder {
 
         let my_packet : Arc<UnsafeCell<Option<Result<T>>>>
             = Arc::new(UnsafeCell::new(None));
-        let their_packet = my_packet.clone();
+        // let their_packet = my_packet.clone();
 
         let main = move || {
             if let Some(name) = their_thread.cname() {
@@ -468,9 +468,9 @@ impl Builder {
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
-            #[cfg(not(feature = "backtrace"))]
-            let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
-            *their_packet.get() = Some(try_result);
+            // #[cfg(not(feature = "backtrace"))]
+            // let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
+            // *their_packet.get() = Some(try_result);
         };
 
         Ok(JoinHandle(JoinInner {

@@ -3,7 +3,6 @@
 //! Documentation can be found on the `rt::at_exit` function.
 
 use crate::ptr;
-// use crate::mem;
 use crate::sys_common::mutex::Mutex;
 
 type Queue = Vec<Box<dyn FnOnce()>>;
@@ -23,7 +22,8 @@ const DONE: *mut Queue = 1_usize as *mut _;
 // the at_exit closures new ones may be registered, and this count is the number
 // of times the new closures will be allowed to register successfully. After
 // this number of iterations all new registrations will return `false`.
-// const ITERS: usize = 10;
+#[cfg(not(target_arch = "bpf"))]
+const ITERS: usize = 10;
 
 unsafe fn init() -> bool {
     if QUEUE.is_null() {
@@ -38,26 +38,28 @@ unsafe fn init() -> bool {
 }
 
 pub fn cleanup() {
-    // for i in 1..=ITERS {
-    //     unsafe {
-    //         let queue = {
-    //             let _guard = LOCK.lock();
-    //             mem::replace(&mut QUEUE, if i == ITERS { DONE } else { ptr::null_mut() })
-    //         };
+    // TODO causes LLVM to crash when compiling for BPF, not needed to BPF anyway for commented out
+    #[cfg(not(target_arch = "bpf"))]
+    for i in 1..=ITERS {
+        unsafe {
+            let queue = {
+                let _guard = LOCK.lock();
+                crate::mem::replace(&mut QUEUE, if i == ITERS { DONE } else { ptr::null_mut() })
+            };
 
-    //         // make sure we're not recursively cleaning up
-    //         assert!(queue != DONE);
+            // make sure we're not recursively cleaning up
+            assert!(queue != DONE);
 
-    //         // If we never called init, not need to cleanup!
-    //         if !queue.is_null() {
-    //             let queue: Box<Queue> = Box::from_raw(queue);
-    //             for to_run in *queue {
-    //                 // We are not holding any lock, so reentrancy is fine.
-    //                 to_run();
-    //             }
-    //         }
-    //     }
-    // }
+            // If we never called init, not need to cleanup!
+            if !queue.is_null() {
+                let queue: Box<Queue> = Box::from_raw(queue);
+                for to_run in *queue {
+                    // We are not holding any lock, so reentrancy is fine.
+                    to_run();
+                }
+            }
+        }
+    }
 }
 
 pub fn push(f: Box<dyn FnOnce()>) -> bool {
