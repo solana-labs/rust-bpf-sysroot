@@ -13,6 +13,9 @@ name = "std"
 path = "lib.rs"
 # crate-type = ["dylib", "rlib"]
 
+[workspace]
+members = []
+
 [dependencies]
 alloc = { path = "../liballoc" }
 # panic_unwind = { path = "../libpanic_unwind", optional = true }
@@ -25,9 +28,6 @@ compiler_builtins = { path = "../compiler-builtins" }
 hashbrown = { path = "../../../hashbrown", features = ['rustc-dep-of-std'] }
 # rustc-demangle = { version = "0.1.10", features = ['rustc-dep-of-std'] }
 # backtrace-sys = { version = "0.1.24", features = ["rustc-dep-of-std"], optional = true }
-
-[workspace]
-members = []
 
 [dev-dependencies]
 # rand = "0.6.1"

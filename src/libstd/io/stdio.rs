@@ -9,7 +9,7 @@ use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-// use crate::thread::LocalKey;
+use crate::thread::LocalKey;
 
 thread_local! {
     /// Stdout used by print! and println! macros
@@ -758,49 +758,39 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
     })
 }
 
-// /// Write `args` to output stream `local_s` if possible, `global_s`
-// /// otherwise. `label` identifies the stream in a panic message.
-// ///
-// /// This function is used to print error messages, so it takes extra
-// /// care to avoid causing a panic when `local_stream` is unusable.
-// /// For instance, if the TLS key for the local stream is
-// /// already destroyed, or if the local stream is locked by another
-// /// thread, it will just fall back to the global stream.
-// ///
-// /// However, if the actual I/O causes an error, this function does panic.
-// fn print_to<T>(
-//     args: fmt::Arguments<'_>,
-//     local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
-//     global_s: fn() -> T,
-//     label: &str,
-// )
-// where
-//     T: Write,
-// {
-//     let result = local_s.try_with(|s| {
-//         if let Ok(mut borrowed) = s.try_borrow_mut() {
-//             if let Some(w) = borrowed.as_mut() {
-//                 return w.write_fmt(args);
-//             }
-//         }
-//         global_s().write_fmt(args)
-//     }).unwrap_or_else(|_| {
-//         global_s().write_fmt(args)
-//     });
+/// Write `args` to output stream `local_s` if possible, `global_s`
+/// otherwise. `label` identifies the stream in a panic message.
+///
+/// This function is used to print error messages, so it takes extra
+/// care to avoid causing a panic when `local_stream` is unusable.
+/// For instance, if the TLS key for the local stream is
+/// already destroyed, or if the local stream is locked by another
+/// thread, it will just fall back to the global stream.
+///
+/// However, if the actual I/O causes an error, this function does panic.
+fn print_to<T>(
+    args: fmt::Arguments<'_>,
+    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
+    global_s: fn() -> T,
+    label: &str,
+)
+where
+    T: Write,
+{
+    let result = local_s.try_with(|s| {
+        if let Ok(mut borrowed) = s.try_borrow_mut() {
+            if let Some(w) = borrowed.as_mut() {
+                return w.write_fmt(args);
+            }
+        }
+        global_s().write_fmt(args)
+    }).unwrap_or_else(|_| {
+        global_s().write_fmt(args)
+    });
 
-//     if let Err(e) = result {
-//         panic!("failed printing to {}: {}", label, e);
-//     }
-// }
-
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
-#[doc(hidden)]
-#[cfg(not(test))]
-pub fn _print(_args: fmt::Arguments<'_>) {
-    crate::sys::sol_log("fmt not supported, print ignored");
-    // print_to(args, &LOCAL_STDOUT, stdout, "stdout");
+    if let Err(e) = result {
+        panic!("failed printing to {}: {}", label, e);
+    }
 }
 
 #[unstable(feature = "print_internals",
@@ -808,9 +798,17 @@ pub fn _print(_args: fmt::Arguments<'_>) {
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
-pub fn _eprint(_args: fmt::Arguments<'_>) {
-    crate::sys::sol_log("fmt not supported, print ignored");
-    // print_to(args, &LOCAL_STDERR, stderr, "stderr");
+pub fn _print(args: fmt::Arguments<'_>) {
+    print_to(args, &LOCAL_STDOUT, stdout, "stdout");
+}
+
+#[unstable(feature = "print_internals",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+#[cfg(not(test))]
+pub fn _eprint(args: fmt::Arguments<'_>) {
+    print_to(args, &LOCAL_STDERR, stderr, "stderr");
 }
 
 #[cfg(test)]

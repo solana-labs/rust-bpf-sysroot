@@ -38,6 +38,7 @@ unsafe fn init() -> bool {
 }
 
 pub fn cleanup() {
+    // TODO causes LLVM to crash when compiling for BPF, not needed to BPF anyway for commented out
     // for i in 1..=ITERS {
     //     unsafe {
     //         let queue = {

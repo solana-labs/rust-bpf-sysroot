@@ -418,5 +418,7 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    panicking::update_count_then_panic(payload)
+    // Only used by thread, redirect to plain old panic
+    // panicking::update_count_then_panic(payload)
+    panicking::begin_panic("", file!(), line!(), 0)
 }

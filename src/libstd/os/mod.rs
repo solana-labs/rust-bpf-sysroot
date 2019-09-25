@@ -17,8 +17,8 @@ cfg_if! {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::windows_ext as windows;
 
-        // #[doc(cfg(target_os = "linux"))]
-        // pub mod linux;
+        #[doc(cfg(target_os = "linux"))]
+        pub mod linux;
     } else {
 
         // If we're not documenting libstd then we just expose the main modules
@@ -32,8 +32,8 @@ cfg_if! {
         #[stable(feature = "rust1", since = "1.0.0")]
         pub use crate::sys::ext as windows;
 
-        // #[cfg(any(target_os = "linux", target_os = "l4re"))]
-        // pub mod linux;
+        #[cfg(any(target_os = "linux", target_os = "l4re"))]
+        pub mod linux;
 
     }
 }
