@@ -331,10 +331,11 @@ extern crate alloc as alloc_crate;
 #[allow(unused_extern_crates)]
 extern crate libc;
 
-// // We always need an unwinder currently for backtraces
-// #[doc(masked)]
-// #[allow(unused_extern_crates)]
-// extern crate unwind;
+// We always need an unwinder currently for backtraces
+#[doc(masked)]
+#[allow(unused_extern_crates)]
+#[cfg(not(target_arch = "bpf"))]
+extern crate unwind;
 
 // During testing, this crate is not actually the "real" std library, but rather
 // it links to the real std library, which was compiled from this same source
@@ -485,22 +486,24 @@ mod memchr;
 // compiler
 pub mod rt;
 
-// // Pull in the `std_detect` crate directly into libstd. The contents of
-// // `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
-// //
-// // `std_detect` depends on libstd, but the contents of this module are
-// // set up in such a way that directly pulling it here works such that the
-// // crate uses the this crate as its libstd.
-// #[path = "../stdsimd/crates/std_detect/src/mod.rs"]
-// #[allow(missing_debug_implementations, missing_docs, dead_code)]
-// #[unstable(feature = "stdsimd", issue = "48556")]
-// #[cfg(not(test))]
-// mod std_detect;
+// Pull in the `std_detect` crate directly into libstd. The contents of
+// `std_detect` are in a different repository: rust-lang-nursery/stdsimd.
+//
+// `std_detect` depends on libstd, but the contents of this module are
+// set up in such a way that directly pulling it here works such that the
+// crate uses the this crate as its libstd.
+#[path = "../stdsimd/crates/std_detect/src/mod.rs"]
+#[allow(missing_debug_implementations, missing_docs, dead_code)]
+#[unstable(feature = "stdsimd", issue = "48556")]
+#[cfg(not(test))]
+#[cfg(not(target_arch = "bpf"))]
+mod std_detect;
 
-// #[doc(hidden)]
-// #[unstable(feature = "stdsimd", issue = "48556")]
-// #[cfg(not(test))]
-// pub use std_detect::detect;
+#[doc(hidden)]
+#[unstable(feature = "stdsimd", issue = "48556")]
+#[cfg(not(test))]
+#[cfg(not(target_arch = "bpf"))]
+pub use std_detect::detect;
 
 // Include a number of private modules that exist solely to provide
 // the rustdoc documentation for primitive types. Using `include!`

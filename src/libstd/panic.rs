@@ -13,9 +13,11 @@ use crate::ptr::{Unique, NonNull};
 use crate::rc::Rc;
 use crate::sync::{Arc, Mutex, RwLock, atomic};
 use crate::task::{Context, Poll};
+#[cfg(not(target_arch = "bpf"))]
 use crate::thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
+#[cfg(not(target_arch = "bpf"))]
 pub use crate::panicking::{take_hook, set_hook};
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
@@ -383,6 +385,7 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// assert!(result.is_err());
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
+#[cfg(not(target_arch = "bpf"))]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
     unsafe {
         panicking::r#try(f)
@@ -417,8 +420,14 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// }
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
-pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    // Only used by thread, redirect to plain old panic
-    // panicking::update_count_then_panic(payload)
-    panicking::begin_panic("", file!(), line!(), 0)
+pub fn resume_unwind(_payload: Box<dyn Any + Send>) -> ! {
+    #[cfg(not(target_arch = "bpf"))]
+    {
+        panicking::update_count_then_panic(payload)
+    }
+    #[cfg(target_arch = "bpf")]
+    {
+        // Only used by thread, redirect to plain old panic
+        panicking::begin_panic(&(file!(), line!(), 0))
+    }
 }

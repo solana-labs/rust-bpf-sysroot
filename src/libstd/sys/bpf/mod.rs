@@ -90,9 +90,9 @@ extern "C" {
     fn sol_panic_(file: *const u8, len: u64, line: u64, column: u64) -> !;
 }
 
-#[cfg(not(test))]
-pub fn init() {
-}
+// #[cfg(not(test))]
+// pub fn init() {
+// }
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())

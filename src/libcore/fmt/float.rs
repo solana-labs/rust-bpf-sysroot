@@ -1,46 +1,63 @@
 use crate::fmt::{Formatter, Result, LowerExp, UpperExp, Display, Debug};
-// use crate::mem::MaybeUninit;
+#[cfg(not(target_arch = "bpf"))]
+use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
 
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
+fn float_to_decimal_common_exact<T>(fmt: &mut Formatter<'_>, num: &T,
+                                    sign: flt2dec::Sign, precision: usize) -> Result
+    where T: flt2dec::DecodableFloat
+{
+    #[cfg(not(target_arch = "bpf"))]
+    unsafe {
+        let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
+        let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
+        // FIXME(#53491): Technically, this is calling `get_mut` on an uninitialized
+        // `MaybeUninit` (here and elsewhere in this file).  Revisit this once
+        // we decided whether that is valid or not.
+        // Using `freeze` is *not enough*; `flt2dec::Part` is an enum!
+        let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
+                                                    *num, sign, precision,
+                                                    false, buf.get_mut(), parts.get_mut());
+        fmt.pad_formatted_parts(&formatted)
+    }
+}
+
+#[cfg(target_arch = "bpf")]
 fn float_to_decimal_common_exact<T>(_fmt: &mut Formatter<'_>, _num: &T,
                                     _sign: flt2dec::Sign, _precision: usize) -> Result
     where T: flt2dec::DecodableFloat
 {
-    // unsafe {
-    //     let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
-    //     let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
-    //     // FIXME(#53491): Technically, this is calling `get_mut` on an uninitialized
-    //     // `MaybeUninit` (here and elsewhere in this file).  Revisit this once
-    //     // we decided whether that is valid or not.
-    //     // Using `freeze` is *not enough*; `flt2dec::Part` is an enum!
-    //     let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
-    //                                                 *num, sign, precision,
-    //                                                 false, buf.get_mut(), parts.get_mut());
-    //     fmt.pad_formatted_parts(&formatted)
-    // }
     panic!("Not supported");
 }
 
 // Don't inline this so callers that call both this and the above won't wind
 // up using the combined stack space of both functions in some cases.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
+fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter<'_>, num: &T,
+                                       sign: flt2dec::Sign, precision: usize) -> Result
+    where T: flt2dec::DecodableFloat
+{
+    unsafe {
+        // enough for f32 and f64
+        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
+        let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
+        // FIXME(#53491)
+        let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest, *num,
+                                                 sign, precision, false, buf.get_mut(),
+                                                 parts.get_mut());
+        fmt.pad_formatted_parts(&formatted)
+    }
+}
+#[cfg(target_arch = "bpf")]
 fn float_to_decimal_common_shortest<T>(_fmt: &mut Formatter<'_>, _num: &T,
                                        _sign: flt2dec::Sign, _precision: usize) -> Result
     where T: flt2dec::DecodableFloat
 {
-    // unsafe {
-    //     // enough for f32 and f64
-    //     let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
-    //     let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 4]>::uninit();
-    //     // FIXME(#53491)
-    //     let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest, *num,
-    //                                              sign, precision, false, buf.get_mut(),
-    //                                              parts.get_mut());
-    //     fmt.pad_formatted_parts(&formatted)
-    // }
     panic!("Not supported");
 }
 
@@ -67,41 +84,59 @@ fn float_to_decimal_common<T>(fmt: &mut Formatter<'_>, num: &T,
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
+fn float_to_exponential_common_exact<T>(fmt: &mut Formatter<'_>, num: &T,
+                                        sign: flt2dec::Sign, precision: usize,
+                                        upper: bool) -> Result
+    where T: flt2dec::DecodableFloat
+{
+    unsafe {
+        let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
+        let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
+        // FIXME(#53491)
+        let formatted = flt2dec::to_exact_exp_str(flt2dec::strategy::grisu::format_exact,
+                                                  *num, sign, precision,
+                                                  upper, buf.get_mut(), parts.get_mut());
+        fmt.pad_formatted_parts(&formatted)
+    }
+}
+
+#[cfg(target_arch = "bpf")]
 fn float_to_exponential_common_exact<T>(_fmt: &mut Formatter<'_>, _num: &T,
                                         _sign: flt2dec::Sign, _precision: usize,
                                         _upper: bool) -> Result
     where T: flt2dec::DecodableFloat
 {
-    // unsafe {
-    //     let mut buf = MaybeUninit::<[u8; 1024]>::uninit(); // enough for f32 and f64
-    //     let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
-    //     // FIXME(#53491)
-    //     let formatted = flt2dec::to_exact_exp_str(flt2dec::strategy::grisu::format_exact,
-    //                                               *num, sign, precision,
-    //                                               upper, buf.get_mut(), parts.get_mut());
-    //     fmt.pad_formatted_parts(&formatted)
-    // }
     panic!("Not supported");
 }
 
 // Don't inline this so callers that call both this and the above won't wind
 // up using the combined stack space of both functions in some cases.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
+fn float_to_exponential_common_shortest<T>(fmt: &mut Formatter<'_>,
+                                           num: &T, sign: flt2dec::Sign,
+                                           upper: bool) -> Result
+    where T: flt2dec::DecodableFloat
+{
+    unsafe {
+        // enough for f32 and f64
+        let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
+        let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
+        // FIXME(#53491)
+        let formatted = flt2dec::to_shortest_exp_str(flt2dec::strategy::grisu::format_shortest,
+                                                     *num, sign, (0, 0), upper,
+                                                     buf.get_mut(), parts.get_mut());
+        fmt.pad_formatted_parts(&formatted)
+    }
+}
+
+#[cfg(target_arch = "bpf")]
 fn float_to_exponential_common_shortest<T>(_fmt: &mut Formatter<'_>,
                                            _num: &T, _sign: flt2dec::Sign,
                                            _upper: bool) -> Result
     where T: flt2dec::DecodableFloat
 {
-    // unsafe {
-    //     // enough for f32 and f64
-    //     let mut buf = MaybeUninit::<[u8; flt2dec::MAX_SIG_DIGITS]>::uninit();
-    //     let mut parts = MaybeUninit::<[flt2dec::Part<'_>; 6]>::uninit();
-    //     // FIXME(#53491)
-    //     let formatted = flt2dec::to_shortest_exp_str(flt2dec::strategy::grisu::format_shortest,
-    //                                                  *num, sign, (0, 0), upper,
-    //                                                  buf.get_mut(), parts.get_mut());
-    //     fmt.pad_formatted_parts(&formatted)
-    // }
     panic!("Not supported");
 }
 
