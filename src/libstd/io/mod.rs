@@ -279,13 +279,16 @@ pub use self::error::{Result, Error, ErrorKind};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
+pub use self::stdio::{Stdin, Stdout, Stderr};
+#[cfg(not(target_arch = "bpf"))]
+pub use self::stdio::{stdin, stdout, stderr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
 #[unstable(feature = "print_internals", issue = "0")]
 pub use self::stdio::{_print, _eprint};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
+#[cfg(not(target_arch = "bpf"))]
 pub use self::stdio::{set_panic, set_print};
 
 pub mod prelude;

@@ -50,10 +50,12 @@ pub struct ReentrantMutex {
 }
 
 impl ReentrantMutex {
+    #[cfg(not(target_arch = "bpf"))]
     pub unsafe fn uninitialized() -> ReentrantMutex {
         ReentrantMutex { }
     }
 
+    #[cfg(not(target_arch = "bpf"))]
     pub unsafe fn init(&mut self) {}
 
     pub unsafe fn lock(&self) {}

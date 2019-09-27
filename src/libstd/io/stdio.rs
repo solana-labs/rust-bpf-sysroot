@@ -4,13 +4,14 @@ use crate::io::prelude::*;
 
 use crate::cell::RefCell;
 use crate::fmt;
+#[cfg(not(target_arch = "bpf"))]
 use crate::io::lazy::Lazy;
 use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
 use crate::sync::{Arc, Mutex, MutexGuard};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
-use crate::thread::LocalKey;
 
+#[cfg(not(target_arch = "bpf"))]
 thread_local! {
     /// Stdout used by print! and println! macros
     static LOCAL_STDOUT: RefCell<Option<Box<dyn Write + Send>>> = {
@@ -18,6 +19,7 @@ thread_local! {
     }
 }
 
+#[cfg(not(target_arch = "bpf"))]
 thread_local! {
     /// Stderr used by eprint! and eprintln! macros, and panics
     static LOCAL_STDERR: RefCell<Option<Box<dyn Write + Send>>> = {
@@ -50,6 +52,7 @@ struct StderrRaw(stdio::Stderr);
 /// handles is **not** available to raw handles returned from this function.
 ///
 /// The returned handle has no external synchronization or buffering.
+#[cfg(not(target_arch = "bpf"))]
 fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 
 /// Constructs a new raw handle to the standard output stream of this process.
@@ -61,6 +64,7 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
+#[cfg(not(target_arch = "bpf"))]
 fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 
 /// Constructs a new raw handle to the standard error stream of this process.
@@ -70,6 +74,7 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 ///
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
+#[cfg(not(target_arch = "bpf"))]
 fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
 
 impl Read for StdinRaw {
@@ -103,6 +108,7 @@ impl Write for StderrRaw {
     fn flush(&mut self) -> io::Result<()> { self.0.flush() }
 }
 
+#[allow(dead_code)]
 enum Maybe<T> {
     Real(T),
     Fake,
@@ -239,6 +245,7 @@ pub struct StdinLock<'a> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_arch = "bpf"))]
 pub fn stdin() -> Stdin {
     static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
     return Stdin {
@@ -463,6 +470,7 @@ pub struct StdoutLock<'a> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_arch = "bpf"))]
 pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
     return Stdout {
@@ -622,6 +630,7 @@ pub struct StderrLock<'a> {
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_arch = "bpf"))]
 pub fn stderr() -> Stderr {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
     return Stderr {
@@ -725,6 +734,7 @@ impl fmt::Debug for StderrLock<'_> {
                      with a more general mechanism",
            issue = "0")]
 #[doc(hidden)]
+#[cfg(not(target_arch = "bpf"))]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
     LOCAL_STDERR.with(move |slot| {
@@ -748,6 +758,7 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
                      with a more general mechanism",
            issue = "0")]
 #[doc(hidden)]
+#[cfg(not(target_arch = "bpf"))]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
     LOCAL_STDOUT.with(move |slot| {
@@ -768,9 +779,10 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// thread, it will just fall back to the global stream.
 ///
 /// However, if the actual I/O causes an error, this function does panic.
+#[cfg(not(target_arch = "bpf"))]
 fn print_to<T>(
     args: fmt::Arguments<'_>,
-    local_s: &'static LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
+    local_s: &'static crate::thread::LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
     global_s: fn() -> T,
     label: &str,
 )
@@ -798,8 +810,17 @@ where
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
+#[cfg(not(target_arch = "bpf"))]
 pub fn _print(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
+}
+#[unstable(feature = "print_internals",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+#[cfg(not(test))]
+#[cfg(target_arch = "bpf")]
+pub fn _print(_args: fmt::Arguments<'_>) {
 }
 
 #[unstable(feature = "print_internals",
@@ -807,8 +828,17 @@ pub fn _print(args: fmt::Arguments<'_>) {
            issue = "0")]
 #[doc(hidden)]
 #[cfg(not(test))]
+#[cfg(not(target_arch = "bpf"))]
 pub fn _eprint(args: fmt::Arguments<'_>) {
     print_to(args, &LOCAL_STDERR, stderr, "stderr");
+}
+#[unstable(feature = "print_internals",
+           reason = "implementation detail which may disappear or be replaced at any time",
+           issue = "0")]
+#[doc(hidden)]
+#[cfg(not(test))]
+#[cfg(target_arch = "bpf")]
+pub fn _eprint(_args: fmt::Arguments<'_>) {
 }
 
 #[cfg(test)]

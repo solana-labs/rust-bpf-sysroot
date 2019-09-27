@@ -1,3 +1,5 @@
+#![cfg(not(target_arch = "bpf"))]
+
 use crate::cell::Cell;
 use crate::ptr;
 use crate::sync::Arc;

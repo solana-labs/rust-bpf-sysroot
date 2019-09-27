@@ -15,9 +15,6 @@
 #![allow(missing_docs)]
 #![allow(missing_debug_implementations)]
 
-use crate::sync::Once;
-use crate::sys;
-
 macro_rules! rtabort {
     ($($t:tt)*) => (crate::sys_common::util::abort(format_args!($($t)*)))
 }
@@ -121,16 +118,18 @@ pub trait FromInner<Inner> {
 /// closure will be run once the main thread exits. Returns `Err` to indicate
 /// that the closure could not be registered, meaning that it is not scheduled
 /// to be run.
+#[cfg(not(target_arch = "bpf"))]
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
     if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
 }
 
 /// One-time runtime cleanup.
+#[cfg(not(target_arch = "bpf"))]
 pub fn cleanup() {
-    static CLEANUP: Once = Once::new();
+    static CLEANUP: crate::sync::Once = crate::sync::Once::new();
     CLEANUP.call_once(|| unsafe {
-        sys::args::cleanup();
-        sys::stack_overflow::cleanup();
+        crate::sys::args::cleanup();
+        crate::sys::stack_overflow::cleanup();
         at_exit_imp::cleanup();
     });
 }

@@ -1,6 +1,7 @@
 //! Implementation of running at_exit routines
 //!
 //! Documentation can be found on the `rt::at_exit` function.
+#![cfg(not(target_arch = "bpf"))]
 
 use crate::ptr;
 use crate::sys_common::mutex::Mutex;
@@ -13,7 +14,9 @@ type Queue = Vec<Box<dyn FnOnce()>>;
 // initialization/destruction).
 // We never call `LOCK.init()`, so it is UB to attempt to
 // acquire this mutex reentrantly!
+#[cfg(not(target_arch = "bpf"))]
 static LOCK: Mutex = Mutex::new();
+#[cfg(not(target_arch = "bpf"))]
 static mut QUEUE: *mut Queue = ptr::null_mut();
 
 const DONE: *mut Queue = 1_usize as *mut _;
@@ -26,12 +29,15 @@ const DONE: *mut Queue = 1_usize as *mut _;
 const ITERS: usize = 10;
 
 unsafe fn init() -> bool {
-    if QUEUE.is_null() {
-        let state: Box<Queue> = box Vec::new();
-        QUEUE = Box::into_raw(state);
-    } else if QUEUE == DONE {
-        // can't re-init after a cleanup
-        return false
+    #[cfg(not(target_arch = "bpf"))]
+    {
+        if QUEUE.is_null() {
+            let state: Box<Queue> = box Vec::new();
+            QUEUE = Box::into_raw(state);
+        } else if QUEUE == DONE {
+            // can't re-init after a cleanup
+            return false
+        }
     }
 
     true
@@ -63,6 +69,7 @@ pub fn cleanup() {
 }
 
 pub fn push(f: Box<dyn FnOnce()>) -> bool {
+    #[cfg(not(target_arch = "bpf"))]
     unsafe {
         let _guard = LOCK.lock();
         if init() {
@@ -73,5 +80,9 @@ pub fn push(f: Box<dyn FnOnce()>) -> bool {
         } else {
             false
         }
+    }
+    #[cfg(target_arch = "bpf")]
+    {
+        true
     }
 }

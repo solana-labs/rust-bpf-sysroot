@@ -5,9 +5,6 @@ pub struct Stdout;
 pub struct Stderr;
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> {
-        Ok(Stdin)
-    }
 }
 
 impl io::Read for Stdin {
@@ -17,9 +14,6 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> {
-        Ok(Stdout)
-    }
 }
 
 impl io::Write for Stdout {
@@ -36,9 +30,6 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> {
-        Ok(Stderr)
-    }
 }
 
 impl io::Write for Stderr {
@@ -54,13 +45,10 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = 0;
-
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
-    crate::sys::sol_log("panic_output");
-    Stderr::new().ok()
+    None::<Box<dyn io::Write>>
 }

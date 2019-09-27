@@ -93,10 +93,6 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(_code: i32) -> ! {
-    panic!();
-}
-
 pub fn getpid() -> u32 {
     0
 }

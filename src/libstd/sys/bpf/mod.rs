@@ -30,7 +30,6 @@ pub mod os;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod stack_overflow;
 pub mod thread;
 pub mod time;
 pub mod stdio;

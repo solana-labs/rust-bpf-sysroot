@@ -1506,6 +1506,7 @@ impl Child {
 ///
 /// [platform-specific behavior]: #platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_arch = "bpf"))]
 pub fn exit(code: i32) -> ! {
     crate::sys_common::cleanup();
     crate::sys::os::exit(code)

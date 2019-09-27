@@ -2,13 +2,6 @@ use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::vec;
 
-// pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
-//     // On BPF these should always be null, so there's nothing for us to do here
-// }
-
-pub unsafe fn cleanup() {
-}
-
 pub fn args() -> Args {
     panic!();
 }

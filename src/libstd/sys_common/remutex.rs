@@ -48,6 +48,7 @@ impl<T> !marker::Send for ReentrantMutexGuard<'_, T> {}
 
 impl<T> ReentrantMutex<T> {
     /// Creates a new reentrant mutex in an unlocked state.
+    #[cfg(not(target_arch = "bpf"))]
     pub fn new(t: T) -> ReentrantMutex<T> {
         unsafe {
             let mut mutex = ReentrantMutex {
