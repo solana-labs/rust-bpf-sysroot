@@ -8,3 +8,6 @@
 [submodule "src/hashbrown"]
 	path = src/hashbrown
 	url = https://github.com/solana-labs/hashbrown.git
+[submodule "src/cfg-if"]
+	path = src/cfg-if
+	url = https://github.com/solana-labs/cfg-if.git
