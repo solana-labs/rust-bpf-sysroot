@@ -5,3 +5,6 @@
 [submodule "src/stdarch"]
 	path = src/stdarch
 	url = https://github.com/rust-lang/stdarch.git
+[submodule "src/hashbrown"]
+	path = src/hashbrown
+	url = https://github.com/solana-labs/hashbrown.git
