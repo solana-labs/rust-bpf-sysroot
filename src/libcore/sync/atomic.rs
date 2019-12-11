@@ -124,28 +124,31 @@ use crate::fmt;
 
 use crate::hint::spin_loop;
 
-/// Signals the processor that it is entering a busy-wait spin-loop.
+/// Signals the processor that it is inside a busy-wait spin-loop ("spin lock").
 ///
 /// Upon receiving spin-loop signal the processor can optimize its behavior by, for example, saving
 /// power or switching hyper-threads.
 ///
-/// This function is different than [`std::thread::yield_now`] which directly yields to the
-/// system's scheduler, whereas `spin_loop_hint` only signals the processor that it is entering a
-/// busy-wait spin-loop without yielding control to the system's scheduler.
+/// This function is different from [`std::thread::yield_now`] which directly yields to the
+/// system's scheduler, whereas `spin_loop_hint` does not interact with the operating system.
 ///
-/// Using a busy-wait spin-loop with `spin_loop_hint` is ideally used in situations where a
-/// contended lock is held by another thread executed on a different CPU and where the waiting
-/// times are relatively small. Because entering busy-wait spin-loop does not trigger the system's
-/// scheduler, no overhead for switching threads occurs. However, if the thread holding the
-/// contended lock is running on the same CPU, the spin-loop is likely to occupy an entire CPU slice
-/// before switching to the thread that holds the lock. If the contending lock is held by a thread
-/// on the same CPU or if the waiting times for acquiring the lock are longer, it is often better to
-/// use [`std::thread::yield_now`].
+/// Spin locks can be very efficient for short lock durations because they do not involve context
+/// switches or interaction with the operating system. For long lock durations they become wasteful
+/// however because they use CPU cycles for the entire lock duration, and using a
+/// [`std::sync::Mutex`] is likely the better approach. If actively spinning for a long time is
+/// required, e.g. because code polls a non-blocking API, calling [`std::thread::yield_now`]
+/// or [`std::thread::sleep`] may be the best option.
+///
+/// **Note**: Spin locks are based on the underlying assumption that another thread will release
+/// the lock 'soon'. In order for this to work, that other thread must run on a different CPU or
+/// core (at least potentially). Spin locks do not work efficiently on single CPU / core platforms.
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
 ///
 /// [`std::thread::yield_now`]: ../../../std/thread/fn.yield_now.html
+/// [`std::thread::sleep`]: ../../../std/thread/fn.sleep.html
+/// [`std::sync::Mutex`]: ../../../std/sync/struct.Mutex.html
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
@@ -979,9 +982,8 @@ impl<T> AtomicPtr<T> {
     /// let some_ptr  = AtomicPtr::new(ptr);
     ///
     /// let other_ptr   = &mut 10;
-    /// let another_ptr = &mut 10;
     ///
-    /// let value = some_ptr.compare_and_swap(other_ptr, another_ptr, Ordering::Relaxed);
+    /// let value = some_ptr.compare_and_swap(ptr, other_ptr, Ordering::Relaxed);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1021,9 +1023,8 @@ impl<T> AtomicPtr<T> {
     /// let some_ptr  = AtomicPtr::new(ptr);
     ///
     /// let other_ptr   = &mut 10;
-    /// let another_ptr = &mut 10;
     ///
-    /// let value = some_ptr.compare_exchange(other_ptr, another_ptr,
+    /// let value = some_ptr.compare_exchange(ptr, other_ptr,
     ///                                       Ordering::SeqCst, Ordering::Relaxed);
     /// ```
     #[inline]
@@ -1899,7 +1900,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "i8", "../../../std/primitive.i8.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_min, atomic_max,
     1,
     "AtomicI8::new(0)",
@@ -1915,7 +1916,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "u8", "../../../std/primitive.u8.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_umin, atomic_umax,
     1,
     "AtomicU8::new(0)",
@@ -1931,7 +1932,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "i16", "../../../std/primitive.i16.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_min, atomic_max,
     2,
     "AtomicI16::new(0)",
@@ -1947,7 +1948,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "u16", "../../../std/primitive.u16.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_umin, atomic_umax,
     2,
     "AtomicU16::new(0)",
@@ -1963,7 +1964,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "i32", "../../../std/primitive.i32.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_min, atomic_max,
     4,
     "AtomicI32::new(0)",
@@ -1979,7 +1980,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "u32", "../../../std/primitive.u32.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_umin, atomic_umax,
     4,
     "AtomicU32::new(0)",
@@ -1995,7 +1996,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "i64", "../../../std/primitive.i64.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_min, atomic_max,
     8,
     "AtomicI64::new(0)",
@@ -2011,7 +2012,7 @@ atomic_int! {
     stable(feature = "integer_atomics_stable", since = "1.34.0"),
     unstable(feature = "integer_atomics", issue = "32976"),
     "u64", "../../../std/primitive.u64.html",
-    "#![feature(integer_atomics)]\n\n",
+    "",
     atomic_umin, atomic_umax,
     8,
     "AtomicU64::new(0)",

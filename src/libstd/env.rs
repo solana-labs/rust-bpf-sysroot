@@ -182,6 +182,12 @@ impl fmt::Debug for VarsOs {
 /// * Environment variable is not present
 /// * Environment variable is not valid unicode
 ///
+/// # Panics
+///
+/// This function may panic if `key` is empty, contains an ASCII equals sign
+/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
+/// character.
+///
 /// # Examples
 ///
 /// ```
@@ -209,6 +215,12 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 /// [`None`] if the variable isn't set.
 ///
 /// [`None`]: ../option/enum.Option.html#variant.None
+///
+/// # Panics
+///
+/// This function may panic if `key` is empty, contains an ASCII equals sign
+/// `'='` or the NUL character `'\0'`, or when the value contains the NUL
+/// character.
 ///
 /// # Examples
 ///
@@ -278,7 +290,7 @@ impl Error for VarError {
 ///
 /// Note that while concurrent access to environment variables is safe in Rust,
 /// some platforms only expose inherently unsafe non-threadsafe APIs for
-/// inspecting the environment. As a result extra care needs to be taken when
+/// inspecting the environment. As a result, extra care needs to be taken when
 /// auditing calls to unsafe external FFI functions to ensure that any external
 /// environment accesses are properly synchronized with accesses in Rust.
 ///
@@ -465,7 +477,7 @@ pub struct JoinPathsError {
 /// # }
 /// ```
 ///
-/// Using `env::join_paths` with `env::spit_paths` to append an item to the `PATH` environment
+/// Using `env::join_paths` with [`env::split_paths`] to append an item to the `PATH` environment
 /// variable:
 ///
 /// ```
@@ -483,6 +495,8 @@ pub struct JoinPathsError {
 ///     Ok(())
 /// }
 /// ```
+///
+/// [`env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     where I: IntoIterator<Item=T>, T: AsRef<OsStr>
@@ -746,10 +760,6 @@ impl Iterator for Args {
         self.inner.next().map(|s| s.into_string().unwrap())
     }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
-    #[inline]
-    fn last(mut self) -> Option<String> {
-        self.next_back()
-    }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -785,8 +795,6 @@ impl Iterator for ArgsOs {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.inner.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
-    #[inline]
-    fn last(mut self) -> Option<OsString> { self.next_back() }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -978,6 +986,12 @@ mod arch {
 mod arch {
     pub const ARCH: &str = "wasm32";
 }
+
+#[cfg(target_arch = "hexagon")]
+mod arch {
+    pub const ARCH: &'static str = "hexagon";
+}
+
 #[cfg(target_arch = "bpf")]
 mod arch {
     pub const ARCH: &str = "bpf";

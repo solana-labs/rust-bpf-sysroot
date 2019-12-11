@@ -63,10 +63,9 @@ pub mod bytestring;
 pub mod process;
 pub mod fs;
 
-cfg_if! {
+cfg_if::cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
                  target_os = "l4re",
-                 target_os = "redox",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
                  target_arch = "bpf",
                  all(target_vendor = "fortanix", target_env = "sgx")))] {

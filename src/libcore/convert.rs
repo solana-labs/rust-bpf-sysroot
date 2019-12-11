@@ -42,11 +42,11 @@
 
 use crate::fmt;
 
-/// An identity function.
+/// The identity function.
 ///
 /// Two things are important to note about this function:
 ///
-/// - It is not always equivalent to a closure like `|x| x` since the
+/// - It is not always equivalent to a closure like `|x| x`, since the
 ///   closure may coerce `x` into a different type.
 ///
 /// - It moves the input `x` passed to the function.
@@ -56,31 +56,32 @@ use crate::fmt;
 ///
 /// # Examples
 ///
-/// Using `identity` to do nothing among other interesting functions:
+/// Using `identity` to do nothing in a sequence of other, interesting,
+/// functions:
 ///
 /// ```rust
 /// use std::convert::identity;
 ///
 /// fn manipulation(x: u32) -> u32 {
-///     // Let's assume that this function does something interesting.
+///     // Let's pretend that adding one is an interesting function.
 ///     x + 1
 /// }
 ///
 /// let _arr = &[identity, manipulation];
 /// ```
 ///
-/// Using `identity` to get a function that changes nothing in a conditional:
+/// Using `identity` as a "do nothing" base case in a conditional:
 ///
 /// ```rust
 /// use std::convert::identity;
 ///
 /// # let condition = true;
-///
+/// #
 /// # fn manipulation(x: u32) -> u32 { x + 1 }
-///
+/// #
 /// let do_stuff = if condition { manipulation } else { identity };
 ///
-/// // do more interesting stuff..
+/// // Do more interesting stuff...
 ///
 /// let _results = do_stuff(42);
 /// ```
@@ -104,22 +105,16 @@ pub const fn identity<T>(x: T) -> T { x }
 /// If you need to do a costly conversion it is better to implement [`From`] with type
 /// `&T` or write a custom function.
 ///
+/// `AsRef` has the same signature as [`Borrow`], but [`Borrow`] is different in few aspects:
 ///
-/// `AsRef` has the same signature as [`Borrow`], but `Borrow` is different in few aspects:
-///
-/// - Unlike `AsRef`, `Borrow` has a blanket impl for any `T`, and can be used to accept either
+/// - Unlike `AsRef`, [`Borrow`] has a blanket impl for any `T`, and can be used to accept either
 ///   a reference or a value.
-/// - `Borrow` also requires that `Hash`, `Eq` and `Ord` for borrowed value are
+/// - [`Borrow`] also requires that [`Hash`], [`Eq`] and [`Ord`] for borrowed value are
 ///   equivalent to those of the owned value. For this reason, if you want to
-///   borrow only a single field of a struct you can implement `AsRef`, but not `Borrow`.
-///
-/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+///   borrow only a single field of a struct you can implement `AsRef`, but not [`Borrow`].
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
-///
-/// [`Option<T>`]: ../../std/option/enum.Option.html
-/// [`Result<T, E>`]: ../../std/result/enum.Result.html
 ///
 /// # Generic Implementations
 ///
@@ -130,12 +125,19 @@ pub const fn identity<T>(x: T) -> T { x }
 /// # Examples
 ///
 /// By using trait bounds we can accept arguments of different types as long as they can be
-/// converted a the specified type `T`.
+/// converted to the specified type `T`.
 ///
 /// For example: By creating a generic function that takes an `AsRef<str>` we express that we
-/// want to accept all references that can be converted to &str as an argument.
-/// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
+/// want to accept all references that can be converted to [`&str`] as an argument.
+/// Since both [`String`] and [`&str`] implement `AsRef<str>` we can accept both as input argument.
 ///
+/// [`Option<T>`]: ../../std/option/enum.Option.html
+/// [`Result<T, E>`]: ../../std/result/enum.Result.html
+/// [`Borrow`]: ../../std/borrow/trait.Borrow.html
+/// [`Hash`]: ../../std/hash/trait.Hash.html
+/// [`Eq`]: ../../std/cmp/trait.Eq.html
+/// [`Ord`]: ../../std/cmp/trait.Ord.html
+/// [`&str`]: ../../std/primitive.str.html
 /// [`String`]: ../../std/string/struct.String.html
 ///
 /// ```
@@ -149,7 +151,6 @@ pub const fn identity<T>(x: T) -> T { x }
 /// let s = "hello".to_string();
 /// is_hello(s);
 /// ```
-///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRef<T: ?Sized> {
     /// Performs the conversion.
@@ -179,9 +180,10 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// Using `AsMut` as trait bound for a generic function we can accept all mutable references
 /// that can be converted to type `&mut T`. Because [`Box<T>`] implements `AsMut<T>` we can
-/// write a function `add_one`that takes all arguments that can be converted to `&mut u64`.
-/// Because [`Box<T>`] implements `AsMut<T>` `add_one` accepts arguments of type
+/// write a function `add_one` that takes all arguments that can be converted to `&mut u64`.
+/// Because [`Box<T>`] implements `AsMut<T>`, `add_one` accepts arguments of type
 /// `&mut Box<u64>` as well:
+///
 /// ```
 /// fn add_one<T: AsMut<u64>>(num: &mut T) {
 ///     *num.as_mut() += 1;
@@ -191,8 +193,8 @@ pub trait AsRef<T: ?Sized> {
 /// add_one(&mut boxed_num);
 /// assert_eq!(*boxed_num, 1);
 /// ```
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
 ///
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
     /// Performs the conversion.
@@ -213,10 +215,10 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Generic Implementations
 ///
-/// - [`From<T>`]` for U` implies `Into<U> for T`
-/// - [`Into`]` is reflexive, which means that `Into<T> for T` is implemented
+/// - [`From`]`<T> for U` implies `Into<U> for T`
+/// - [`Into`] is reflexive, which means that `Into<T> for T` is implemented
 ///
-/// # Implementing `Into` for conversions to external types
+/// # Implementing [`Into`] for conversions to external types
 ///
 /// If the destination type is not part of the current crate
 /// then you can't implement [`From`] directly.
@@ -232,7 +234,7 @@ pub trait AsMut<T: ?Sized> {
 /// ```
 /// This will fail to compile because we cannot implement a trait for a type
 /// if both the trait and the type are not defined by the current crate.
-/// This is due to Rust's orphaning rules. To bypass this, you can implement `Into` directly:
+/// This is due to Rust's orphaning rules. To bypass this, you can implement [`Into`] directly:
 ///
 /// ```
 /// struct Wrapper<T>(Vec<T>);
@@ -243,21 +245,21 @@ pub trait AsMut<T: ?Sized> {
 /// }
 /// ```
 ///
-/// It is important to understand that `Into` does not provide a [`From`] implementation
-/// (as [`From`] does with `Into`). Therefore, you should always try to implement [`From`]
-/// and then fall back to `Into` if [`From`] can't be implemented.
+/// It is important to understand that [`Into`] does not provide a [`From`] implementation
+/// (as [`From`] does with [`Into`]). Therefore, you should always try to implement [`From`]
+/// and then fall back to [`Into`] if [`From`] can't be implemented.
 ///
-/// Prefer using `Into` over [`From`] when specifying trait bounds on a generic function
-/// to ensure that types that only implement `Into` can be used as well.
+/// Prefer using [`Into`] over [`From`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement [`Into`] can be used as well.
 ///
 /// # Examples
 ///
-/// [`String`] implements `Into<Vec<u8>>`:
+/// [`String`] implements [`Into`]`<`[`Vec`]`<`[`u8`]`>>`:
 ///
 /// In order to express that we want a generic function to take all arguments that can be
-/// converted to a specified type `T`, we can use a trait bound of `Into<T>`.
+/// converted to a specified type `T`, we can use a trait bound of [`Into`]`<T>`.
 /// For example: The function `is_hello` takes all arguments that can be converted into a
-/// `Vec<u8>`.
+/// [`Vec`]`<`[`u8`]`>`.
 ///
 /// ```
 /// fn is_hello<T: Into<Vec<u8>>>(s: T) {
@@ -273,8 +275,9 @@ pub trait AsMut<T: ?Sized> {
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [From]: trait.From.html
-/// [`into`]: trait.Into.html#tymethod.into
+/// [`From`]: trait.From.html
+/// [`Into`]: trait.Into.html
+/// [`Vec`]: ../../std/vec/struct.Vec.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -285,18 +288,18 @@ pub trait Into<T>: Sized {
 /// Used to do value-to-value conversions while consuming the input value. It is the reciprocal of
 /// [`Into`].
 ///
-/// One should always prefer implementing [`From`] over [`Into`]
-/// because implementing [`From`] automatically provides one with a implementation of [`Into`]
+/// One should always prefer implementing `From` over [`Into`]
+/// because implementing `From` automatically provides one with a implementation of [`Into`]
 /// thanks to the blanket implementation in the standard library.
 ///
 /// Only implement [`Into`] if a conversion to a type outside the current crate is required.
-/// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
+/// `From` cannot do these type of conversions because of Rust's orphaning rules.
 /// See [`Into`] for more details.
 ///
-/// Prefer using [`Into`] over using [`From`] when specifying trait bounds on a generic function.
+/// Prefer using [`Into`] over using `From` when specifying trait bounds on a generic function.
 /// This way, types that directly implement [`Into`] can be used as arguments as well.
 ///
-/// The [`From`] is also very useful when performing error handling. When constructing a function
+/// The `From` is also very useful when performing error handling. When constructing a function
 /// that is capable of failing, the return type will generally be of the form `Result<T, E>`.
 /// The `From` trait simplifies error handling by allowing a function to return a single error type
 /// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
@@ -306,14 +309,15 @@ pub trait Into<T>: Sized {
 ///
 /// # Generic Implementations
 ///
-/// - [`From<T>`]` for U` implies [`Into<U>`]` for T`
-/// - [`From`] is reflexive, which means that `From<T> for T` is implemented
+/// - `From<T> for U` implies [`Into`]`<U> for T`
+/// - `From` is reflexive, which means that `From<T> for T` is implemented
 ///
 /// # Examples
 ///
 /// [`String`] implements `From<&str>`:
 ///
-/// An explicit conversion from a &str to a String is done as follows:
+/// An explicit conversion from a `&str` to a String is done as follows:
+///
 /// ```
 /// let string = "hello".to_string();
 /// let other_string = String::from("hello");
@@ -361,7 +365,7 @@ pub trait Into<T>: Sized {
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`Into<U>`]: trait.Into.html
+/// [`Into`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -410,23 +414,23 @@ pub trait TryInto<T>: Sized {
 ///
 /// This is useful when you are doing a type conversion that may
 /// trivially succeed but may also need special handling.
-/// For example, there is no way to convert an `i64` into an `i32`
-/// using the [`From`] trait, because an `i64` may contain a value
-/// that an `i32` cannot represent and so the conversion would lose data.
-/// This might be handled by truncating the `i64` to an `i32` (essentially
-/// giving the `i64`'s value modulo `i32::MAX`) or by simply returning
-/// `i32::MAX`, or by some other method.  The `From` trait is intended
+/// For example, there is no way to convert an [`i64`] into an [`i32`]
+/// using the [`From`] trait, because an [`i64`] may contain a value
+/// that an [`i32`] cannot represent and so the conversion would lose data.
+/// This might be handled by truncating the [`i64`] to an [`i32`] (essentially
+/// giving the [`i64`]'s value modulo [`i32::MAX`]) or by simply returning
+/// [`i32::MAX`], or by some other method.  The [`From`] trait is intended
 /// for perfect conversions, so the `TryFrom` trait informs the
 /// programmer when a type conversion could go bad and lets them
 /// decide how to handle it.
 ///
 /// # Generic Implementations
 ///
-/// - `TryFrom<T> for U` implies [`TryInto<U>`]` for T`
+/// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
 /// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
-/// calling `T::try_from()` on a value of type `T` is `Infallible`.
-/// When the `!` type is stablized `Infallible` and `!` will be
+/// calling `T::try_from()` on a value of type `T` is [`Infallible`].
+/// When the [`!`] type is stabilized [`Infallible`] and [`!`] will be
 /// equivalent.
 ///
 /// `TryFrom<T>` can be implemented as follows:
@@ -451,7 +455,7 @@ pub trait TryInto<T>: Sized {
 ///
 /// # Examples
 ///
-/// As described, [`i32`] implements `TryFrom<i64>`:
+/// As described, [`i32`] implements `TryFrom<`[`i64`]`>`:
 ///
 /// ```
 /// use std::convert::TryFrom;
@@ -474,6 +478,9 @@ pub trait TryInto<T>: Sized {
 ///
 /// [`try_from`]: trait.TryFrom.html#tymethod.try_from
 /// [`TryInto`]: trait.TryInto.html
+/// [`i32::MAX`]: ../../std/i32/constant.MAX.html
+/// [`!`]: ../../std/primitive.never.html
+/// [`Infallible`]: enum.Infallible.html
 #[stable(feature = "try_from", since = "1.34.0")]
 pub trait TryFrom<T>: Sized {
     /// The type returned in the event of a conversion error.
@@ -509,7 +516,7 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 
 // FIXME (#45742): replace the above impls for &/&mut with the following more general one:
 // // As lifts over Deref
-// impl<D: ?Sized + Deref, U: ?Sized> AsRef<U> for D where D::Target: AsRef<U> {
+// impl<D: ?Sized + Deref<Target: AsRef<U>>, U: ?Sized> AsRef<U> for D {
 //     fn as_ref(&self) -> &U {
 //         self.deref().as_ref()
 //     }
@@ -526,7 +533,7 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 
 // FIXME (#45742): replace the above impl for &mut with the following more general one:
 // // AsMut lifts over DerefMut
-// impl<D: ?Sized + Deref, U: ?Sized> AsMut<U> for D where D::Target: AsMut<U> {
+// impl<D: ?Sized + Deref<Target: AsMut<U>>, U: ?Sized> AsMut<U> for D {
 //     fn as_mut(&mut self) -> &mut U {
 //         self.deref_mut().as_mut()
 //     }

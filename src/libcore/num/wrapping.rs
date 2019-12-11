@@ -18,6 +18,8 @@ macro_rules! sh_impl_signed {
                 }
             }
         }
+        forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
@@ -41,6 +43,8 @@ macro_rules! sh_impl_signed {
                 }
             }
         }
+        forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
@@ -64,6 +68,8 @@ macro_rules! sh_impl_unsigned {
                 Wrapping(self.0.wrapping_shl((other & self::shift_max::$t as $f) as u32))
             }
         }
+        forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
@@ -83,6 +89,8 @@ macro_rules! sh_impl_unsigned {
                 Wrapping(self.0.wrapping_shr((other & self::shift_max::$t as $f) as u32))
             }
         }
+        forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
+                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
@@ -511,7 +519,6 @@ assert_eq!(n.trailing_zeros(), 3);
             /// Basic usage:
             ///
             /// ```
-            /// #![feature(reverse_bits)]
             /// use std::num::Wrapping;
             ///
             /// let n = Wrapping(0b0000000_01010101i16);
@@ -522,8 +529,9 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(m.0 as u16, 0b10101010_00000000);
             /// assert_eq!(m, Wrapping(-22016));
             /// ```
-            #[unstable(feature = "reverse_bits", issue = "48763")]
+            #[stable(feature = "reverse_bits", since = "1.37.0")]
             #[inline]
+            #[must_use]
             pub const fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())
             }
