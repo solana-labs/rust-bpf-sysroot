@@ -29,14 +29,13 @@ else
   machine=linux
 fi
 
-# Install xargo
-if [[ ! -r xargo.md ]]; then
-  cargo install xargo
-  xargo --version > xargo.md 2>&1
-fi
+# Install or upgrade xargo
+cargo install cargo-update 2> /dev/null
+cargo install-update -i xargo
+xargo --version > xargo.md 2>&1
 
 # Install LLVM
-version=v0.0.10
+version=v0.0.15
 if [[ ! -f llvm-native-$machine-$version.md ]]; then
   (
     filename=solana-llvm-$machine.tar.bz2
@@ -62,7 +61,7 @@ if [[ ! -f llvm-native-$machine-$version.md ]]; then
 fi
 
 # Install Rust-BPF
-version=v0.1.2
+version=v0.2.1
 if [[ ! -f rust-bpf-$machine-$version.md ]]; then
   (
     filename=solana-rust-bpf-$machine.tar.bz2
