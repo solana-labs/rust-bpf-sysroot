@@ -41,6 +41,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
+
+mod num;
+
+#[unstable(feature = "convert_float_to_int", issue = "67057")]
+pub use num::FloatToInt;
 
 /// The identity function.
 ///
@@ -96,8 +102,11 @@ use crate::fmt;
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
+#[rustc_const_stable(feature = "const_identity", since = "1.33.0")]
 #[inline]
-pub const fn identity<T>(x: T) -> T { x }
+pub const fn identity<T>(x: T) -> T {
+    x
+}
 
 /// Used to do a cheap reference-to-reference conversion.
 ///
@@ -205,11 +214,12 @@ pub trait AsMut<T: ?Sized> {
 /// A value-to-value conversion that consumes the input value. The
 /// opposite of [`From`].
 ///
-/// One should only implement [`Into`] if a conversion to a type outside the current crate is
-/// required. Otherwise one should always prefer implementing [`From`] over [`Into`] because
-/// implementing [`From`] automatically provides one with a implementation of [`Into`] thanks to
-/// the blanket implementation in the standard library. [`From`] cannot do these type of
-/// conversions because of Rust's orphaning rules.
+/// One should avoid implementing [`Into`] and implement [`From`] instead.
+/// Implementing [`From`] automatically provides one with an implementation of [`Into`]
+/// thanks to the blanket implementation in the standard library.
+///
+/// Prefer using [`Into`] over [`From`] when specifying trait bounds on a generic function
+/// to ensure that types that only implement [`Into`] can be used as well.
 ///
 /// **Note: This trait must not fail**. If the conversion can fail, use [`TryInto`].
 ///
@@ -218,13 +228,13 @@ pub trait AsMut<T: ?Sized> {
 /// - [`From`]`<T> for U` implies `Into<U> for T`
 /// - [`Into`] is reflexive, which means that `Into<T> for T` is implemented
 ///
-/// # Implementing [`Into`] for conversions to external types
+/// # Implementing [`Into`] for conversions to external types in old versions of Rust
 ///
-/// If the destination type is not part of the current crate
-/// then you can't implement [`From`] directly.
+/// Prior to Rust 1.41, if the destination type was not part of the current crate
+/// then you couldn't implement [`From`] directly.
 /// For example, take this code:
 ///
-/// ```compile_fail
+/// ```
 /// struct Wrapper<T>(Vec<T>);
 /// impl<T> From<Wrapper<T>> for Vec<T> {
 ///     fn from(w: Wrapper<T>) -> Vec<T> {
@@ -232,9 +242,8 @@ pub trait AsMut<T: ?Sized> {
 ///     }
 /// }
 /// ```
-/// This will fail to compile because we cannot implement a trait for a type
-/// if both the trait and the type are not defined by the current crate.
-/// This is due to Rust's orphaning rules. To bypass this, you can implement [`Into`] directly:
+/// This will fail to compile in older versions of the language because Rust's orphaning rules
+/// used to be a little bit more strict. To bypass this, you could implement [`Into`] directly:
 ///
 /// ```
 /// struct Wrapper<T>(Vec<T>);
@@ -248,9 +257,6 @@ pub trait AsMut<T: ?Sized> {
 /// It is important to understand that [`Into`] does not provide a [`From`] implementation
 /// (as [`From`] does with [`Into`]). Therefore, you should always try to implement [`From`]
 /// and then fall back to [`Into`] if [`From`] can't be implemented.
-///
-/// Prefer using [`Into`] over [`From`] when specifying trait bounds on a generic function
-/// to ensure that types that only implement [`Into`] can be used as well.
 ///
 /// # Examples
 ///
@@ -289,7 +295,7 @@ pub trait Into<T>: Sized {
 /// [`Into`].
 ///
 /// One should always prefer implementing `From` over [`Into`]
-/// because implementing `From` automatically provides one with a implementation of [`Into`]
+/// because implementing `From` automatically provides one with an implementation of [`Into`]
 /// thanks to the blanket implementation in the standard library.
 ///
 /// Only implement [`Into`] if a conversion to a type outside the current crate is required.
@@ -368,13 +374,12 @@ pub trait Into<T>: Sized {
 /// [`Into`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
+#[rustc_diagnostic_item = "from_trait"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
-    on(
-        all(_Self="&str", T="std::string::String"),
-        note="to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
-    )
-)]
+#[rustc_on_unimplemented(on(
+    all(_Self = "&str", T = "std::string::String"),
+    note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
+))]
 pub trait From<T>: Sized {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -438,16 +443,16 @@ pub trait TryInto<T>: Sized {
 /// ```
 /// use std::convert::TryFrom;
 ///
-/// struct SuperiorThanZero(i32);
+/// struct GreaterThanZero(i32);
 ///
-/// impl TryFrom<i32> for SuperiorThanZero {
+/// impl TryFrom<i32> for GreaterThanZero {
 ///     type Error = &'static str;
 ///
 ///     fn try_from(value: i32) -> Result<Self, Self::Error> {
-///         if value < 0 {
-///             Err("SuperiorThanZero only accepts value superior than zero!")
+///         if value <= 0 {
+///             Err("GreaterThanZero only accepts value superior than zero!")
 ///         } else {
-///             Ok(SuperiorThanZero(value))
+///             Ok(GreaterThanZero(value))
 ///         }
 ///     }
 /// }
@@ -498,7 +503,9 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &T
+where
+    T: AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -507,7 +514,9 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T
+where
+    T: AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -524,7 +533,9 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
+impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T
+where
+    T: AsMut<U>,
 {
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
@@ -541,7 +552,9 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, U> Into<U> for T where U: From<T>
+impl<T, U> Into<U> for T
+where
+    U: From<T>,
 {
     fn into(self) -> U {
         U::from(self)
@@ -551,13 +564,31 @@ impl<T, U> Into<U> for T where U: From<T>
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
-    fn from(t: T) -> T { t }
+    fn from(t: T) -> T {
+        t
+    }
 }
 
+/// **Stability note:** This impl does not yet exist, but we are
+/// "reserving space" to add it in the future. See
+/// [rust-lang/rust#64715][#64715] for details.
+///
+/// [#64715]: https://github.com/rust-lang/rust/issues/64715
+#[stable(feature = "convert_infallible", since = "1.34.0")]
+#[allow(unused_attributes)] // FIXME(#58633): do a principled fix instead.
+#[rustc_reservation_impl = "permitting this impl would forbid us from adding \
+                            `impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
+impl<T> From<!> for T {
+    fn from(t: !) -> T {
+        t
+    }
+}
 
 // TryFrom implies TryInto
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<T, U> TryInto<U> for T where U: TryFrom<T>
+impl<T, U> TryInto<U> for T
+where
+    U: TryFrom<T>,
 {
     type Error = U::Error;
 
@@ -569,7 +600,10 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<T, U> TryFrom<U> for T where U: Into<T> {
+impl<T, U> TryFrom<U> for T
+where
+    U: Into<T>,
+{
     type Error = Infallible;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {
@@ -712,5 +746,12 @@ impl Ord for Infallible {
 impl From<!> for Infallible {
     fn from(x: !) -> Self {
         x
+    }
+}
+
+#[stable(feature = "convert_infallible_hash", since = "1.44.0")]
+impl Hash for Infallible {
+    fn hash<H: Hasher>(&self, _: &mut H) {
+        match *self {}
     }
 }

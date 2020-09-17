@@ -1,5 +1,7 @@
 use crate::mem;
 
+#[derive(Copy, Clone)]
+#[repr(transparent)]
 pub struct IoSlice<'a>(&'a [u8]);
 
 impl<'a> IoSlice<'a> {

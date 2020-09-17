@@ -4,6 +4,9 @@
 //! *[See also the `f32` primitive type](../../std/primitive.f32.html).*
 //!
 //! Mathematically significant numbers are provided in the `consts` sub-module.
+//!
+//! Although using these constants won’t cause compilation warnings,
+//! new code should use the associated constants directly on the primitive type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
@@ -14,15 +17,15 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{MIN_EXP, MAX_EXP, MIN_10_EXP};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{MIN, MIN_POSITIVE, MAX};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::consts;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{MAX, MIN, MIN_POSITIVE};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{MAX_EXP, MIN_10_EXP, MIN_EXP};
 
 #[cfg(not(test))]
 #[lang = "f32_runtime"]
@@ -40,26 +43,11 @@ impl f32 {
     /// assert_eq!(g.floor(), 3.0);
     /// assert_eq!(h.floor(), -4.0);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn floor(self) -> f32 {
-        // On MSVC LLVM will lower many math intrinsics to a call to the
-        // corresponding function. On MSVC, however, many of these functions
-        // aren't actually available as symbols to call, but rather they are all
-        // `static inline` functions in header files. This means that from a C
-        // perspective it's "compatible", but not so much from an ABI
-        // perspective (which we're worried about).
-        //
-        // The inline header functions always just cast to a f64 and do their
-        // operation, so we do that here as well, but only for MSVC targets.
-        //
-        // Note that there are many MSVC-specific float operations which
-        // redirect to this comment, so `floorf` is just one case of a missing
-        // function on MSVC, but there are many others elsewhere.
-        #[cfg(target_env = "msvc")]
-        return (self as f64).floor() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::floorf32(self) };
+        unsafe { intrinsics::floorf32(self) }
     }
 
     /// Returns the smallest integer greater than or equal to a number.
@@ -73,14 +61,11 @@ impl f32 {
     /// assert_eq!(f.ceil(), 4.0);
     /// assert_eq!(g.ceil(), 4.0);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ceil(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).ceil() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::ceilf32(self) };
+        unsafe { intrinsics::ceilf32(self) }
     }
 
     /// Returns the nearest integer to a number. Round half-way cases away from
@@ -95,6 +80,7 @@ impl f32 {
     /// assert_eq!(f.round(), 3.0);
     /// assert_eq!(g.round(), -3.0);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn round(self) -> f32 {
@@ -114,6 +100,7 @@ impl f32 {
     /// assert_eq!(g.trunc(), 3.0);
     /// assert_eq!(h.trunc(), -3.0);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn trunc(self) -> f32 {
@@ -125,19 +112,20 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let x = 3.5_f32;
-    /// let y = -3.5_f32;
-    /// let abs_difference_x = (x.fract() - 0.5).abs();
-    /// let abs_difference_y = (y.fract() - (-0.5)).abs();
+    /// let x = 3.6_f32;
+    /// let y = -3.6_f32;
+    /// let abs_difference_x = (x.fract() - 0.6).abs();
+    /// let abs_difference_y = (y.fract() - (-0.6)).abs();
     ///
     /// assert!(abs_difference_x <= f32::EPSILON);
     /// assert!(abs_difference_y <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn fract(self) -> f32 { self - self.trunc() }
+    pub fn fract(self) -> f32 {
+        self - self.trunc()
+    }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -145,8 +133,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 3.5_f32;
     /// let y = -3.5_f32;
     ///
@@ -158,6 +144,7 @@ impl f32 {
     ///
     /// assert!(f32::NAN.abs().is_nan());
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn abs(self) -> f32 {
@@ -173,8 +160,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.signum(), 1.0);
@@ -182,14 +167,11 @@ impl f32 {
     ///
     /// assert!(f32::NAN.signum().is_nan());
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f32 {
-        if self.is_nan() {
-            NAN
-        } else {
-            1.0_f32.copysign(self)
-        }
+        if self.is_nan() { Self::NAN } else { 1.0_f32.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -202,8 +184,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 3.5_f32;
     ///
     /// assert_eq!(f.copysign(0.42), 3.5_f32);
@@ -213,8 +193,8 @@ impl f32 {
     ///
     /// assert!(f32::NAN.copysign(1.0).is_nan());
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
-    #[must_use]
     #[stable(feature = "copysign", since = "1.35.0")]
     pub fn copysign(self, sign: f32) -> f32 {
         unsafe { intrinsics::copysignf32(self, sign) }
@@ -229,8 +209,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let m = 10.0_f32;
     /// let x = 4.0_f32;
     /// let b = 60.0_f32;
@@ -240,6 +218,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn mul_add(self, a: f32, b: f32) -> f32 {
@@ -263,12 +242,13 @@ impl f32 {
     /// assert_eq!(a.div_euclid(-b), -1.0); // 7.0 >= -4.0 * -1.0
     /// assert_eq!((-a).div_euclid(-b), 2.0); // -7.0 >= -4.0 * 2.0
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn div_euclid(self, rhs: f32) -> f32 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
+            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
         }
         q
     }
@@ -294,19 +274,15 @@ impl f32 {
     /// assert_eq!(a.rem_euclid(-b), 3.0);
     /// assert_eq!((-a).rem_euclid(-b), 1.0);
     /// // limitation due to round-off error
-    /// assert!((-std::f32::EPSILON).rem_euclid(3.0) != 0.0);
+    /// assert!((-f32::EPSILON).rem_euclid(3.0) != 0.0);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[inline]
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn rem_euclid(self, rhs: f32) -> f32 {
         let r = self % rhs;
-        if r < 0.0 {
-            r + rhs.abs()
-        } else {
-            r
-        }
+        if r < 0.0 { r + rhs.abs() } else { r }
     }
-
 
     /// Raises a number to an integer power.
     ///
@@ -315,13 +291,12 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powi(self, n: i32) -> f32 {
@@ -333,32 +308,25 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0_f32;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn powf(self, n: f32) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).powf(n as f64) as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::powf32(self, n) };
+        unsafe { intrinsics::powf32(self, n) }
     }
 
-    /// Takes the square root of a number.
+    /// Returns the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let positive = 4.0_f32;
     /// let negative = -4.0_f32;
     ///
@@ -367,14 +335,11 @@ impl f32 {
     /// assert!(abs_difference <= f32::EPSILON);
     /// assert!(negative.sqrt().is_nan());
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f32 {
-        if self < 0.0 {
-            NAN
-        } else {
-            unsafe { intrinsics::sqrtf32(self) }
-        }
+        unsafe { intrinsics::sqrtf32(self) }
     }
 
     /// Returns `e^(self)`, (the exponential function).
@@ -382,8 +347,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let one = 1.0f32;
     /// // e^1
     /// let e = one.exp();
@@ -393,14 +356,11 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).exp() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::expf32(self) };
+        unsafe { intrinsics::expf32(self) }
     }
 
     /// Returns `2^(self)`.
@@ -408,8 +368,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 2.0f32;
     ///
     /// // 2^2 - 4 == 0
@@ -417,6 +375,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp2(self) -> f32 {
@@ -428,8 +387,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let one = 1.0f32;
     /// // e^1
     /// let e = one.exp();
@@ -439,14 +396,11 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).ln() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::logf32(self) };
+        unsafe { intrinsics::logf32(self) }
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -458,8 +412,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let five = 5.0f32;
     ///
     /// // log5(5) - 1 == 0
@@ -467,17 +419,18 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log(self, base: f32) -> f32 { self.ln() / base.ln() }
+    pub fn log(self, base: f32) -> f32 {
+        self.ln() / base.ln()
+    }
 
     /// Returns the base 2 logarithm of the number.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let two = 2.0f32;
     ///
     /// // log2(2) - 1 == 0
@@ -485,6 +438,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f32 {
@@ -499,8 +453,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let ten = 10.0f32;
     ///
     /// // log10(10) - 1 == 0
@@ -508,14 +460,11 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f32 {
-        // see notes above in `floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).log10() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::log10f32(self) };
+        unsafe { intrinsics::log10f32(self) }
     }
 
     /// The positive difference of two numbers.
@@ -526,8 +475,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 3.0f32;
     /// let y = -3.0f32;
     ///
@@ -537,27 +484,28 @@ impl f32 {
     /// assert!(abs_difference_x <= f32::EPSILON);
     /// assert!(abs_difference_y <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_deprecated(since = "1.10.0",
-                       reason = "you probably meant `(self - other).abs()`: \
-                                 this operation is `(self - other).max(0.0)` \
-                                 except that `abs_sub` also propagates NaNs (also \
-                                 known as `fdimf` in C). If you truly need the positive \
-                                 difference, consider using that expression or the C function \
-                                 `fdimf`, depending on how you wish to handle NaN (please consider \
-                                 filing an issue describing your use-case too).")]
+    #[rustc_deprecated(
+        since = "1.10.0",
+        reason = "you probably meant `(self - other).abs()`: \
+                  this operation is `(self - other).max(0.0)` \
+                  except that `abs_sub` also propagates NaNs (also \
+                  known as `fdimf` in C). If you truly need the positive \
+                  difference, consider using that expression or the C function \
+                  `fdimf`, depending on how you wish to handle NaN (please consider \
+                  filing an issue describing your use-case too)."
+    )]
     pub fn abs_sub(self, other: f32) -> f32 {
         unsafe { cmath::fdimf(self, other) }
     }
 
-    /// Takes the cubic root of a number.
+    /// Returns the cubic root of a number.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 8.0f32;
     ///
     /// // x^(1/3) - 2 == 0
@@ -565,6 +513,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cbrt(self) -> f32 {
@@ -577,8 +526,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 2.0f32;
     /// let y = 3.0f32;
     ///
@@ -587,6 +534,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn hypot(self, other: f32) -> f32 {
@@ -598,22 +546,17 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let x = f32::consts::FRAC_PI_2;
+    /// let x = std::f32::consts::FRAC_PI_2;
     ///
     /// let abs_difference = (x.sin() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sin(self) -> f32 {
-        // see notes in `core::f32::Float::floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).sin() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::sinf32(self) };
+        unsafe { intrinsics::sinf32(self) }
     }
 
     /// Computes the cosine of a number (in radians).
@@ -621,22 +564,17 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let x = 2.0 * f32::consts::PI;
+    /// let x = 2.0 * std::f32::consts::PI;
     ///
     /// let abs_difference = (x.cos() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cos(self) -> f32 {
-        // see notes in `core::f32::Float::floor`
-        #[cfg(target_env = "msvc")]
-        return (self as f64).cos() as f32;
-        #[cfg(not(target_env = "msvc"))]
-        return unsafe { intrinsics::cosf32(self) };
+        unsafe { intrinsics::cosf32(self) }
     }
 
     /// Computes the tangent of a number (in radians).
@@ -644,13 +582,12 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let x = f32::consts::FRAC_PI_4;
+    /// let x = std::f32::consts::FRAC_PI_4;
     /// let abs_difference = (x.tan() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tan(self) -> f32 {
@@ -664,15 +601,14 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let f = f32::consts::FRAC_PI_2;
+    /// let f = std::f32::consts::FRAC_PI_2;
     ///
     /// // asin(sin(pi/2))
-    /// let abs_difference = (f.sin().asin() - f32::consts::FRAC_PI_2).abs();
+    /// let abs_difference = (f.sin().asin() - std::f32::consts::FRAC_PI_2).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asin(self) -> f32 {
@@ -686,15 +622,14 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let f = f32::consts::FRAC_PI_4;
+    /// let f = std::f32::consts::FRAC_PI_4;
     ///
     /// // acos(cos(pi/4))
-    /// let abs_difference = (f.cos().acos() - f32::consts::FRAC_PI_4).abs();
+    /// let abs_difference = (f.cos().acos() - std::f32::consts::FRAC_PI_4).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acos(self) -> f32 {
@@ -707,8 +642,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let f = 1.0f32;
     ///
     /// // atan(tan(1))
@@ -716,6 +649,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan(self) -> f32 {
@@ -732,8 +666,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// // Positive angles measured counter-clockwise
     /// // from positive x axis
     /// // -pi/4 radians (45 deg clockwise)
@@ -744,12 +676,13 @@ impl f32 {
     /// let x2 = -3.0f32;
     /// let y2 = 3.0f32;
     ///
-    /// let abs_difference_1 = (y1.atan2(x1) - (-f32::consts::FRAC_PI_4)).abs();
-    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * f32::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_1 = (y1.atan2(x1) - (-std::f32::consts::FRAC_PI_4)).abs();
+    /// let abs_difference_2 = (y2.atan2(x2) - (3.0 * std::f32::consts::FRAC_PI_4)).abs();
     ///
     /// assert!(abs_difference_1 <= f32::EPSILON);
     /// assert!(abs_difference_2 <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atan2(self, other: f32) -> f32 {
@@ -762,9 +695,7 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let x = f32::consts::FRAC_PI_4;
+    /// let x = std::f32::consts::FRAC_PI_4;
     /// let f = x.sin_cos();
     ///
     /// let abs_difference_0 = (f.0 - x.sin()).abs();
@@ -785,8 +716,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 6.0f32;
     ///
     /// // e^(ln(6)) - 1
@@ -794,6 +723,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn exp_m1(self) -> f32 {
@@ -806,15 +736,14 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let x = f32::consts::E - 1.0;
+    /// let x = std::f32::consts::E - 1.0;
     ///
     /// // ln(1 + (e - 1)) == ln(e) == 1
     /// let abs_difference = (x.ln_1p() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln_1p(self) -> f32 {
@@ -826,9 +755,7 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let e = f32::consts::E;
+    /// let e = std::f32::consts::E;
     /// let x = 1.0f32;
     ///
     /// let f = x.sinh();
@@ -838,6 +765,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sinh(self) -> f32 {
@@ -849,9 +777,7 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let e = f32::consts::E;
+    /// let e = std::f32::consts::E;
     /// let x = 1.0f32;
     /// let f = x.cosh();
     /// // Solving cosh() at 1 gives this result
@@ -861,6 +787,7 @@ impl f32 {
     /// // Same result
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn cosh(self) -> f32 {
@@ -872,9 +799,7 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let e = f32::consts::E;
+    /// let e = std::f32::consts::E;
     /// let x = 1.0f32;
     ///
     /// let f = x.tanh();
@@ -884,6 +809,7 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn tanh(self) -> f32 {
@@ -895,8 +821,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 1.0f32;
     /// let f = x.sinh().asinh();
     ///
@@ -904,14 +828,11 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn asinh(self) -> f32 {
-        if self == NEG_INFINITY {
-            NEG_INFINITY
-        } else {
-            (self + ((self * self) + 1.0).sqrt()).ln().copysign(self)
-        }
+        (self.abs() + ((self * self) + 1.0).sqrt()).ln().copysign(self)
     }
 
     /// Inverse hyperbolic cosine function.
@@ -919,8 +840,6 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// let x = 1.0f32;
     /// let f = x.cosh().acosh();
     ///
@@ -928,14 +847,11 @@ impl f32 {
     ///
     /// assert!(abs_difference <= f32::EPSILON);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        if self < 1.0 {
-            crate::f32::NAN
-        } else {
-            (self + ((self * self) - 1.0).sqrt()).ln()
-        }
+        if self < 1.0 { Self::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
@@ -943,15 +859,14 @@ impl f32 {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
-    /// let e = f32::consts::E;
+    /// let e = std::f32::consts::E;
     /// let f = e.tanh().atanh();
     ///
     /// let abs_difference = (f - e).abs();
     ///
     /// assert!(abs_difference <= 1e-5);
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn atanh(self) -> f32 {
@@ -963,7 +878,7 @@ impl f32 {
     /// Returns `max` if `self` is greater than `max`, and `min` if `self` is
     /// less than `min`. Otherwise this returns `self`.
     ///
-    /// Not that this function returns NaN if the initial value was NaN as
+    /// Note that this function returns NaN if the initial value was NaN as
     /// well.
     ///
     /// # Panics
@@ -977,26 +892,29 @@ impl f32 {
     /// assert!((-3.0f32).clamp(-2.0, 1.0) == -2.0);
     /// assert!((0.0f32).clamp(-2.0, 1.0) == 0.0);
     /// assert!((2.0f32).clamp(-2.0, 1.0) == 1.0);
-    /// assert!((std::f32::NAN).clamp(-2.0, 1.0).is_nan());
+    /// assert!((f32::NAN).clamp(-2.0, 1.0).is_nan());
     /// ```
+    #[must_use = "method returns a new number and does not mutate the original value"]
     #[unstable(feature = "clamp", issue = "44095")]
     #[inline]
     pub fn clamp(self, min: f32, max: f32) -> f32 {
         assert!(min <= max);
         let mut x = self;
-        if x < min { x = min; }
-        if x > max { x = max; }
+        if x < min {
+            x = min;
+        }
+        if x > max {
+            x = max;
+        }
         x
     }
-
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::f32;
-    use crate::f32::*;
-    use crate::num::*;
+    use crate::f32::consts;
     use crate::num::FpCategory as Fp;
+    use crate::num::*;
 
     #[test]
     fn test_num_f32() {
@@ -1005,14 +923,14 @@ mod tests {
 
     #[test]
     fn test_min_nan() {
-        assert_eq!(NAN.min(2.0), 2.0);
-        assert_eq!(2.0f32.min(NAN), 2.0);
+        assert_eq!(f32::NAN.min(2.0), 2.0);
+        assert_eq!(2.0f32.min(f32::NAN), 2.0);
     }
 
     #[test]
     fn test_max_nan() {
-        assert_eq!(NAN.max(2.0), 2.0);
-        assert_eq!(2.0f32.max(NAN), 2.0);
+        assert_eq!(f32::NAN.max(2.0), 2.0);
+        assert_eq!(2.0f32.max(f32::NAN), 2.0);
     }
 
     #[test]
@@ -1235,52 +1153,52 @@ mod tests {
 
     #[test]
     fn test_abs() {
-        assert_eq!(INFINITY.abs(), INFINITY);
+        assert_eq!(f32::INFINITY.abs(), f32::INFINITY);
         assert_eq!(1f32.abs(), 1f32);
         assert_eq!(0f32.abs(), 0f32);
         assert_eq!((-0f32).abs(), 0f32);
         assert_eq!((-1f32).abs(), 1f32);
-        assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f32/NEG_INFINITY).abs(), 0f32);
-        assert!(NAN.abs().is_nan());
+        assert_eq!(f32::NEG_INFINITY.abs(), f32::INFINITY);
+        assert_eq!((1f32 / f32::NEG_INFINITY).abs(), 0f32);
+        assert!(f32::NAN.abs().is_nan());
     }
 
     #[test]
     fn test_signum() {
-        assert_eq!(INFINITY.signum(), 1f32);
+        assert_eq!(f32::INFINITY.signum(), 1f32);
         assert_eq!(1f32.signum(), 1f32);
         assert_eq!(0f32.signum(), 1f32);
         assert_eq!((-0f32).signum(), -1f32);
         assert_eq!((-1f32).signum(), -1f32);
-        assert_eq!(NEG_INFINITY.signum(), -1f32);
-        assert_eq!((1f32/NEG_INFINITY).signum(), -1f32);
-        assert!(NAN.signum().is_nan());
+        assert_eq!(f32::NEG_INFINITY.signum(), -1f32);
+        assert_eq!((1f32 / f32::NEG_INFINITY).signum(), -1f32);
+        assert!(f32::NAN.signum().is_nan());
     }
 
     #[test]
     fn test_is_sign_positive() {
-        assert!(INFINITY.is_sign_positive());
+        assert!(f32::INFINITY.is_sign_positive());
         assert!(1f32.is_sign_positive());
         assert!(0f32.is_sign_positive());
         assert!(!(-0f32).is_sign_positive());
         assert!(!(-1f32).is_sign_positive());
-        assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f32/NEG_INFINITY).is_sign_positive());
-        assert!(NAN.is_sign_positive());
-        assert!(!(-NAN).is_sign_positive());
+        assert!(!f32::NEG_INFINITY.is_sign_positive());
+        assert!(!(1f32 / f32::NEG_INFINITY).is_sign_positive());
+        assert!(f32::NAN.is_sign_positive());
+        assert!(!(-f32::NAN).is_sign_positive());
     }
 
     #[test]
     fn test_is_sign_negative() {
-        assert!(!INFINITY.is_sign_negative());
+        assert!(!f32::INFINITY.is_sign_negative());
         assert!(!1f32.is_sign_negative());
         assert!(!0f32.is_sign_negative());
         assert!((-0f32).is_sign_negative());
         assert!((-1f32).is_sign_negative());
-        assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f32/NEG_INFINITY).is_sign_negative());
-        assert!(!NAN.is_sign_negative());
-        assert!((-NAN).is_sign_negative());
+        assert!(f32::NEG_INFINITY.is_sign_negative());
+        assert!((1f32 / f32::NEG_INFINITY).is_sign_negative());
+        assert!(!f32::NAN.is_sign_negative());
+        assert!((-f32::NAN).is_sign_negative());
     }
 
     #[test]
@@ -1345,13 +1263,13 @@ mod tests {
 
     #[test]
     fn test_sqrt_domain() {
-        assert!(NAN.sqrt().is_nan());
-        assert!(NEG_INFINITY.sqrt().is_nan());
+        assert!(f32::NAN.sqrt().is_nan());
+        assert!(f32::NEG_INFINITY.sqrt().is_nan());
         assert!((-1.0f32).sqrt().is_nan());
         assert_eq!((-0.0f32).sqrt(), -0.0);
         assert_eq!(0.0f32.sqrt(), 0.0);
         assert_eq!(1.0f32.sqrt(), 1.0);
-        assert_eq!(INFINITY.sqrt(), INFINITY);
+        assert_eq!(f32::INFINITY.sqrt(), f32::INFINITY);
     }
 
     #[test]
@@ -1491,6 +1409,8 @@ mod tests {
         assert!((-0.0f32).asinh().is_sign_negative()); // issue 63271
         assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
         assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
+        // regression test for the catastrophic cancellation fixed in 72486
+        assert_approx_eq!((-3000.0f32).asinh(), -8.699514775987968673236893537700647f32);
     }
 
     #[test]
@@ -1594,18 +1514,161 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_clamp_min_greater_than_max() {
-        1.0f32.clamp(3.0, 1.0);
+        let _ = 1.0f32.clamp(3.0, 1.0);
     }
 
     #[test]
     #[should_panic]
     fn test_clamp_min_is_nan() {
-        1.0f32.clamp(NAN, 1.0);
+        let _ = 1.0f32.clamp(f32::NAN, 1.0);
     }
 
     #[test]
     #[should_panic]
     fn test_clamp_max_is_nan() {
-        1.0f32.clamp(3.0, NAN);
+        let _ = 1.0f32.clamp(3.0, f32::NAN);
+    }
+
+    #[test]
+    fn test_total_cmp() {
+        use core::cmp::Ordering;
+
+        fn quiet_bit_mask() -> u32 {
+            1 << (f32::MANTISSA_DIGITS - 2)
+        }
+
+        fn min_subnorm() -> f32 {
+            f32::MIN_POSITIVE / f32::powf(2.0, f32::MANTISSA_DIGITS as f32 - 1.0)
+        }
+
+        fn max_subnorm() -> f32 {
+            f32::MIN_POSITIVE - min_subnorm()
+        }
+
+        fn q_nan() -> f32 {
+            f32::from_bits(f32::NAN.to_bits() | quiet_bit_mask())
+        }
+
+        fn s_nan() -> f32 {
+            f32::from_bits((f32::NAN.to_bits() & !quiet_bit_mask()) + 42)
+        }
+
+        assert_eq!(Ordering::Equal, (-q_nan()).total_cmp(&-q_nan()));
+        assert_eq!(Ordering::Equal, (-s_nan()).total_cmp(&-s_nan()));
+        assert_eq!(Ordering::Equal, (-f32::INFINITY).total_cmp(&-f32::INFINITY));
+        assert_eq!(Ordering::Equal, (-f32::MAX).total_cmp(&-f32::MAX));
+        assert_eq!(Ordering::Equal, (-2.5_f32).total_cmp(&-2.5));
+        assert_eq!(Ordering::Equal, (-1.0_f32).total_cmp(&-1.0));
+        assert_eq!(Ordering::Equal, (-1.5_f32).total_cmp(&-1.5));
+        assert_eq!(Ordering::Equal, (-0.5_f32).total_cmp(&-0.5));
+        assert_eq!(Ordering::Equal, (-f32::MIN_POSITIVE).total_cmp(&-f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Equal, (-max_subnorm()).total_cmp(&-max_subnorm()));
+        assert_eq!(Ordering::Equal, (-min_subnorm()).total_cmp(&-min_subnorm()));
+        assert_eq!(Ordering::Equal, (-0.0_f32).total_cmp(&-0.0));
+        assert_eq!(Ordering::Equal, 0.0_f32.total_cmp(&0.0));
+        assert_eq!(Ordering::Equal, min_subnorm().total_cmp(&min_subnorm()));
+        assert_eq!(Ordering::Equal, max_subnorm().total_cmp(&max_subnorm()));
+        assert_eq!(Ordering::Equal, f32::MIN_POSITIVE.total_cmp(&f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Equal, 0.5_f32.total_cmp(&0.5));
+        assert_eq!(Ordering::Equal, 1.0_f32.total_cmp(&1.0));
+        assert_eq!(Ordering::Equal, 1.5_f32.total_cmp(&1.5));
+        assert_eq!(Ordering::Equal, 2.5_f32.total_cmp(&2.5));
+        assert_eq!(Ordering::Equal, f32::MAX.total_cmp(&f32::MAX));
+        assert_eq!(Ordering::Equal, f32::INFINITY.total_cmp(&f32::INFINITY));
+        assert_eq!(Ordering::Equal, s_nan().total_cmp(&s_nan()));
+        assert_eq!(Ordering::Equal, q_nan().total_cmp(&q_nan()));
+
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-s_nan()));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f32::INFINITY));
+        assert_eq!(Ordering::Less, (-f32::INFINITY).total_cmp(&-f32::MAX));
+        assert_eq!(Ordering::Less, (-f32::MAX).total_cmp(&-2.5));
+        assert_eq!(Ordering::Less, (-2.5_f32).total_cmp(&-1.5));
+        assert_eq!(Ordering::Less, (-1.5_f32).total_cmp(&-1.0));
+        assert_eq!(Ordering::Less, (-1.0_f32).total_cmp(&-0.5));
+        assert_eq!(Ordering::Less, (-0.5_f32).total_cmp(&-f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Less, (-f32::MIN_POSITIVE).total_cmp(&-max_subnorm()));
+        assert_eq!(Ordering::Less, (-max_subnorm()).total_cmp(&-min_subnorm()));
+        assert_eq!(Ordering::Less, (-min_subnorm()).total_cmp(&-0.0));
+        assert_eq!(Ordering::Less, (-0.0_f32).total_cmp(&0.0));
+        assert_eq!(Ordering::Less, 0.0_f32.total_cmp(&min_subnorm()));
+        assert_eq!(Ordering::Less, min_subnorm().total_cmp(&max_subnorm()));
+        assert_eq!(Ordering::Less, max_subnorm().total_cmp(&f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Less, f32::MIN_POSITIVE.total_cmp(&0.5));
+        assert_eq!(Ordering::Less, 0.5_f32.total_cmp(&1.0));
+        assert_eq!(Ordering::Less, 1.0_f32.total_cmp(&1.5));
+        assert_eq!(Ordering::Less, 1.5_f32.total_cmp(&2.5));
+        assert_eq!(Ordering::Less, 2.5_f32.total_cmp(&f32::MAX));
+        assert_eq!(Ordering::Less, f32::MAX.total_cmp(&f32::INFINITY));
+        assert_eq!(Ordering::Less, f32::INFINITY.total_cmp(&s_nan()));
+        assert_eq!(Ordering::Less, s_nan().total_cmp(&q_nan()));
+
+        assert_eq!(Ordering::Greater, (-s_nan()).total_cmp(&-q_nan()));
+        assert_eq!(Ordering::Greater, (-f32::INFINITY).total_cmp(&-s_nan()));
+        assert_eq!(Ordering::Greater, (-f32::MAX).total_cmp(&-f32::INFINITY));
+        assert_eq!(Ordering::Greater, (-2.5_f32).total_cmp(&-f32::MAX));
+        assert_eq!(Ordering::Greater, (-1.5_f32).total_cmp(&-2.5));
+        assert_eq!(Ordering::Greater, (-1.0_f32).total_cmp(&-1.5));
+        assert_eq!(Ordering::Greater, (-0.5_f32).total_cmp(&-1.0));
+        assert_eq!(Ordering::Greater, (-f32::MIN_POSITIVE).total_cmp(&-0.5));
+        assert_eq!(Ordering::Greater, (-max_subnorm()).total_cmp(&-f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Greater, (-min_subnorm()).total_cmp(&-max_subnorm()));
+        assert_eq!(Ordering::Greater, (-0.0_f32).total_cmp(&-min_subnorm()));
+        assert_eq!(Ordering::Greater, 0.0_f32.total_cmp(&-0.0));
+        assert_eq!(Ordering::Greater, min_subnorm().total_cmp(&0.0));
+        assert_eq!(Ordering::Greater, max_subnorm().total_cmp(&min_subnorm()));
+        assert_eq!(Ordering::Greater, f32::MIN_POSITIVE.total_cmp(&max_subnorm()));
+        assert_eq!(Ordering::Greater, 0.5_f32.total_cmp(&f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Greater, 1.0_f32.total_cmp(&0.5));
+        assert_eq!(Ordering::Greater, 1.5_f32.total_cmp(&1.0));
+        assert_eq!(Ordering::Greater, 2.5_f32.total_cmp(&1.5));
+        assert_eq!(Ordering::Greater, f32::MAX.total_cmp(&2.5));
+        assert_eq!(Ordering::Greater, f32::INFINITY.total_cmp(&f32::MAX));
+        assert_eq!(Ordering::Greater, s_nan().total_cmp(&f32::INFINITY));
+        assert_eq!(Ordering::Greater, q_nan().total_cmp(&s_nan()));
+
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-s_nan()));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f32::INFINITY));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f32::MAX));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-2.5));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.5));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-1.0));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.5));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-max_subnorm()));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-min_subnorm()));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&-0.0));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.0));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&min_subnorm()));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&max_subnorm()));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&0.5));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.0));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&1.5));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&2.5));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f32::MAX));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&f32::INFINITY));
+        assert_eq!(Ordering::Less, (-q_nan()).total_cmp(&s_nan()));
+
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f32::INFINITY));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f32::MAX));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-2.5));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.5));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-1.0));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.5));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-max_subnorm()));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-min_subnorm()));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&-0.0));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.0));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&min_subnorm()));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&max_subnorm()));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f32::MIN_POSITIVE));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&0.5));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.0));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&1.5));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&2.5));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f32::MAX));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f32::INFINITY));
+        assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
     }
 }

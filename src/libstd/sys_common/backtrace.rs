@@ -1,3 +1,4 @@
+use crate::borrow::Cow;
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
 
@@ -6,9 +7,9 @@
 use crate::env;
 use crate::fmt;
 use crate::io;
-use crate::borrow::Cow;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
+use crate::sync::atomic::{self, Ordering};
 use crate::sys::mutex::Mutex;
 
 use backtrace_rs::{BacktraceFmt, BytesOrWideString, PrintFmt};
@@ -30,7 +31,7 @@ pub fn lock() -> impl Drop {
 
     unsafe {
         LOCK.lock();
-        return Guard;
+        Guard
     }
 }
 
@@ -58,19 +59,21 @@ unsafe fn _print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
     }
     impl fmt::Display for DisplayBacktrace {
         fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-            unsafe {
-                _print_fmt(fmt, self.format)
-            }
+            unsafe { _print_fmt(fmt, self.format) }
         }
     }
     write!(w, "{}", DisplayBacktrace { format })
 }
 
 unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::Result {
-    let cwd = env::current_dir().ok();
+    // Always 'fail' to get the cwd when running under Miri -
+    // this allows Miri to display backtraces in isolation mode
+    let cwd = if !cfg!(miri) { env::current_dir().ok() } else { None };
+
     let mut print_path = move |fmt: &mut fmt::Formatter<'_>, bows: BytesOrWideString<'_>| {
         output_filename(fmt, bows, print_fmt, cwd.as_ref())
     };
+    writeln!(fmt, "stack backtrace:")?;
     let mut bt_fmt = BacktraceFmt::new(fmt, print_fmt, &mut print_path);
     bt_fmt.add_context()?;
     let mut idx = 0;
@@ -117,8 +120,10 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     Ok(())
 }
 
-/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[inline(never)]
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`. Note that
+/// this is only inline(never) when backtraces in libstd are enabled, otherwise
+/// it's fine to optimize away.
+#[cfg_attr(feature = "backtrace", inline(never))]
 pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
 where
     F: FnOnce() -> T,
@@ -128,42 +133,49 @@ where
     f()
 }
 
+pub enum RustBacktrace {
+    Print(PrintFmt),
+    Disabled,
+    RuntimeDisabled,
+}
+
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
-pub fn log_enabled() -> Option<PrintFmt> {
-    use crate::sync::atomic::{self, Ordering};
+pub fn rust_backtrace_env() -> RustBacktrace {
+    // If the `backtrace` feature of this crate isn't enabled quickly return
+    // `None` so this can be constant propagated all over the place to turn
+    // optimize away callers.
+    if !cfg!(feature = "backtrace") {
+        return RustBacktrace::Disabled;
+    }
 
     // Setting environment variables for Fuchsia components isn't a standard
     // or easily supported workflow. For now, always display backtraces.
     if cfg!(target_os = "fuchsia") {
-        return Some(PrintFmt::Full);
+        return RustBacktrace::Print(PrintFmt::Full);
     }
 
     static ENABLED: atomic::AtomicIsize = atomic::AtomicIsize::new(0);
     match ENABLED.load(Ordering::SeqCst) {
         0 => {}
-        1 => return None,
-        2 => return Some(PrintFmt::Short),
-        _ => return Some(PrintFmt::Full),
+        1 => return RustBacktrace::RuntimeDisabled,
+        2 => return RustBacktrace::Print(PrintFmt::Short),
+        _ => return RustBacktrace::Print(PrintFmt::Full),
     }
 
-    let val = env::var_os("RUST_BACKTRACE").and_then(|x| {
-        if &x == "0" {
-            None
-        } else if &x == "full" {
-            Some(PrintFmt::Full)
-        } else {
-            Some(PrintFmt::Short)
-        }
-    });
-    ENABLED.store(
-        match val {
-            Some(v) => v as isize,
-            None => 1,
-        },
-        Ordering::SeqCst,
-    );
-    val
+    let (format, cache) = env::var_os("RUST_BACKTRACE")
+        .map(|x| {
+            if &x == "0" {
+                (RustBacktrace::RuntimeDisabled, 1)
+            } else if &x == "full" {
+                (RustBacktrace::Print(PrintFmt::Full), 3)
+            } else {
+                (RustBacktrace::Print(PrintFmt::Short), 2)
+            }
+        })
+        .unwrap_or((RustBacktrace::RuntimeDisabled, 1));
+    ENABLED.store(cache, Ordering::SeqCst);
+    format
 }
 
 /// Prints the filename of the backtrace frame.
@@ -191,9 +203,7 @@ pub fn output_filename(
             Cow::Owned(crate::ffi::OsString::from_wide(wide).into())
         }
         #[cfg(not(windows))]
-        BytesOrWideString::Wide(_wide) => {
-            Path::new("<unknown>").into()
-        }
+        BytesOrWideString::Wide(_wide) => Path::new("<unknown>").into(),
     };
     if print_fmt == PrintFmt::Short && file.is_absolute() {
         if let Some(cwd) = cwd {

@@ -4,7 +4,7 @@ use crate::ops::*;
 
 #[allow(unused_macros)]
 macro_rules! sh_impl_signed {
-    ($t:ident, $f:ident) => (
+    ($t:ident, $f:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shl<$f> for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -19,7 +19,7 @@ macro_rules! sh_impl_signed {
             }
         }
         forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
-                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
+        #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
@@ -44,7 +44,7 @@ macro_rules! sh_impl_signed {
             }
         }
         forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
-                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
+        #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
@@ -54,11 +54,11 @@ macro_rules! sh_impl_signed {
             }
         }
         forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
-    )
+    };
 }
 
 macro_rules! sh_impl_unsigned {
-    ($t:ident, $f:ident) => (
+    ($t:ident, $f:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Shl<$f> for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -69,7 +69,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
         forward_ref_binop! { impl Shl, shl for Wrapping<$t>, $f,
-                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
+        #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShlAssign<$f> for Wrapping<$t> {
@@ -90,7 +90,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
         forward_ref_binop! { impl Shr, shr for Wrapping<$t>, $f,
-                #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
+        #[stable(feature = "wrapping_ref_ops", since = "1.39.0")] }
 
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl ShrAssign<$f> for Wrapping<$t> {
@@ -100,7 +100,7 @@ macro_rules! sh_impl_unsigned {
             }
         }
         forward_ref_op_assign! { impl ShrAssign, shr_assign for Wrapping<$t>, $f }
-    )
+    };
 }
 
 // FIXME (#23545): uncomment the remaining impls
@@ -337,14 +337,10 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-assert_eq!(<Wrapping<", stringify!($t), ">>::min_value(), ",
-"Wrapping(", stringify!($t), "::min_value()));
+assert_eq!(<Wrapping<", stringify!($t), ">>::MIN, Wrapping(", stringify!($t), "::MIN));
 ```"),
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                #[inline]
-                pub const fn min_value() -> Self {
-                    Wrapping(<$t>::min_value())
-                }
+                pub const MIN: Self = Self(<$t>::MIN);
             }
 
             doc_comment! {
@@ -358,14 +354,10 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-assert_eq!(<Wrapping<", stringify!($t), ">>::max_value(), ",
-"Wrapping(", stringify!($t), "::max_value()));
+assert_eq!(<Wrapping<", stringify!($t), ">>::MAX, Wrapping(", stringify!($t), "::MAX));
 ```"),
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                #[inline]
-                pub const fn max_value() -> Self {
-                    Wrapping(<$t>::max_value())
-                }
+                pub const MAX: Self = Self(<$t>::MAX);
             }
 
             doc_comment! {
@@ -437,7 +429,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// wrapping the truncated bits to the end of the resulting
             /// integer.
             ///
-            /// Please note this isn't the same operation as the `>>` shifting
+            /// Please note this isn't the same operation as the `<<` shifting
             /// operator!
             ///
             /// # Examples
@@ -463,7 +455,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// wrapping the truncated bits to the beginning of the resulting
             /// integer.
             ///
-            /// Please note this isn't the same operation as the `<<` shifting
+            /// Please note this isn't the same operation as the `>>` shifting
             /// operator!
             ///
             /// # Examples
@@ -530,6 +522,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// assert_eq!(m, Wrapping(-22016));
             /// ```
             #[stable(feature = "reverse_bits", since = "1.37.0")]
+            #[rustc_const_stable(feature = "const_reverse_bits", since = "1.37.0")]
             #[inline]
             #[must_use]
             pub const fn reverse_bits(self) -> Self {
@@ -701,7 +694,7 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-let n = Wrapping(", stringify!($t), "::max_value()) >> 2;
+let n = Wrapping(", stringify!($t), "::MAX) >> 2;
 
 assert_eq!(n.leading_zeros(), 3);
 ```"),
@@ -730,8 +723,7 @@ use std::num::Wrapping;
 
 assert_eq!(Wrapping(100", stringify!($t), ").abs(), Wrapping(100));
 assert_eq!(Wrapping(-100", stringify!($t), ").abs(), Wrapping(100));
-assert_eq!(Wrapping(", stringify!($t), "::min_value()).abs(), Wrapping(", stringify!($t),
-"::min_value()));
+assert_eq!(Wrapping(", stringify!($t), "::MIN).abs(), Wrapping(", stringify!($t), "::MIN));
 assert_eq!(Wrapping(-128i8).abs().0 as u8, 128u8);
 ```"),
                 #[inline]
@@ -830,7 +822,7 @@ Basic usage:
 #![feature(wrapping_int_impl)]
 use std::num::Wrapping;
 
-let n = Wrapping(", stringify!($t), "::max_value()) >> 2;
+let n = Wrapping(", stringify!($t), "::MAX) >> 2;
 
 assert_eq!(n.leading_zeros(), 2);
 ```"),

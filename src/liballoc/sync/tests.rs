@@ -2,14 +2,17 @@ use super::*;
 
 use std::boxed::Box;
 use std::clone::Clone;
-use std::sync::mpsc::channel;
+use std::convert::{From, TryInto};
 use std::mem::drop;
 use std::ops::Drop;
 use std::option::Option::{self, None, Some};
-use std::sync::atomic::{self, Ordering::{Acquire, SeqCst}};
-use std::thread;
+use std::sync::atomic::{
+    self,
+    Ordering::{Acquire, SeqCst},
+};
+use std::sync::mpsc::channel;
 use std::sync::Mutex;
-use std::convert::{From, TryInto};
+use std::thread;
 
 use crate::vec::Vec;
 
@@ -29,7 +32,6 @@ impl Drop for Canary {
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-#[cfg(not(miri))] // Miri does not support threads
 fn manually_share_arc() {
     let v = vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     let arc_v = Arc::new(v);
@@ -62,28 +64,28 @@ fn test_arc_get_mut() {
 
 #[test]
 fn weak_counts() {
-    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), None);
+    assert_eq!(Weak::weak_count(&Weak::<u64>::new()), 0);
     assert_eq!(Weak::strong_count(&Weak::<u64>::new()), 0);
 
     let a = Arc::new(0);
     let w = Arc::downgrade(&a);
     assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), Some(1));
+    assert_eq!(Weak::weak_count(&w), 1);
     let w2 = w.clone();
     assert_eq!(Weak::strong_count(&w), 1);
-    assert_eq!(Weak::weak_count(&w), Some(2));
+    assert_eq!(Weak::weak_count(&w), 2);
     assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), Some(2));
+    assert_eq!(Weak::weak_count(&w2), 2);
     drop(w);
     assert_eq!(Weak::strong_count(&w2), 1);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 1);
     let a2 = a.clone();
     assert_eq!(Weak::strong_count(&w2), 2);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 1);
     drop(a2);
     drop(a);
     assert_eq!(Weak::strong_count(&w2), 0);
-    assert_eq!(Weak::weak_count(&w2), Some(1));
+    assert_eq!(Weak::weak_count(&w2), 0);
     drop(w2);
 }
 
@@ -334,12 +336,13 @@ fn test_ptr_eq() {
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)]
-#[cfg(not(miri))] // Miri does not support threads
 fn test_weak_count_locked() {
     let mut a = Arc::new(atomic::AtomicBool::new(false));
     let a2 = a.clone();
     let t = thread::spawn(move || {
-        for _i in 0..1000000 {
+        // Miri is too slow
+        let count = if cfg!(miri) { 1000 } else { 1000000 };
+        for _i in 0..count {
             Arc::get_mut(&mut a);
         }
         a.store(true, SeqCst);
@@ -348,6 +351,8 @@ fn test_weak_count_locked() {
     while !a2.load(SeqCst) {
         let n = Arc::weak_count(&a2);
         assert!(n < 2, "bad weak count: {}", n);
+        #[cfg(miri)] // Miri's scheduler does not guarantee liveness, and thus needs this hint.
+        atomic::spin_loop_hint();
     }
     t.join().unwrap();
 }
@@ -394,11 +399,8 @@ fn test_clone_from_slice_panic() {
         }
     }
 
-    let s: &[Fail] = &[
-        Fail(0, "foo".to_string()),
-        Fail(1, "bar".to_string()),
-        Fail(2, "baz".to_string()),
-    ];
+    let s: &[Fail] =
+        &[Fail(0, "foo".to_string()), Fail(1, "bar".to_string()), Fail(2, "baz".to_string())];
 
     // Should panic, but not cause memory corruption
     let _r: Arc<[Fail]> = Arc::from(s);
@@ -463,14 +465,14 @@ fn test_from_vec() {
 fn test_downcast() {
     use std::any::Any;
 
-    let r1: Arc<dyn Any + Send + Sync> = Arc::new(i32::max_value());
+    let r1: Arc<dyn Any + Send + Sync> = Arc::new(i32::MAX);
     let r2: Arc<dyn Any + Send + Sync> = Arc::new("abc");
 
     assert!(r1.clone().downcast::<u32>().is_err());
 
     let r1i32 = r1.downcast::<i32>();
     assert!(r1i32.is_ok());
-    assert_eq!(r1i32.unwrap(), Arc::new(i32::max_value()));
+    assert_eq!(r1i32.unwrap(), Arc::new(i32::MAX));
 
     assert!(r2.clone().downcast::<i32>().is_err());
 

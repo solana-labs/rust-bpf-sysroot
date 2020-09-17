@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::hash::{Hash, Hasher};
+use crate::hash::Hash;
 
 /// An unbounded range (`..`).
 ///
@@ -98,8 +98,6 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!(!(3..5).contains(&2));
     /// assert!( (3..5).contains(&3));
     /// assert!( (3..5).contains(&4));
@@ -139,10 +137,9 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
     /// ```
     /// #![feature(range_is_empty)]
     ///
-    /// use std::f32::NAN;
     /// assert!(!(3.0..5.0).is_empty());
-    /// assert!( (3.0..NAN).is_empty());
-    /// assert!( (NAN..5.0).is_empty());
+    /// assert!( (3.0..f32::NAN).is_empty());
+    /// assert!( (f32::NAN..5.0).is_empty());
     /// ```
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     pub fn is_empty(&self) -> bool {
@@ -154,10 +151,16 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 ///
 /// The `RangeFrom` `start..` contains all values with `x >= start`.
 ///
-/// *Note*: Currently, no overflow checking is done for the [`Iterator`]
-/// implementation; if you use an integer range and the integer overflows, it
-/// might panic in debug mode or create an endless loop in release mode. **This
-/// overflow behavior might change in the future.**
+/// *Note*: Overflow in the [`Iterator`] implementation (when the contained
+/// data type reaches its numerical limit) is allowed to panic, wrap, or
+/// saturate. This behavior is defined by the implementation of the [`Step`]
+/// trait. For primitive integers, this follows the normal rules, and respects
+/// the overflow checks profile (panic in debug, wrap in release). Note also
+/// that overflow happens earlier than you might assume: the overflow happens
+/// in the call to `next` that yields the maximum value, as the range must be
+/// set to a state to yield the next value.
+///
+/// [`Step`]: crate::iter::Step
 ///
 /// # Examples
 ///
@@ -199,8 +202,6 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!(!(3..).contains(&2));
     /// assert!( (3..).contains(&3));
     /// assert!( (3..).contains(&1_000_000_000));
@@ -283,8 +284,6 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!( (..5).contains(&-1_000_000_000));
     /// assert!( (..5).contains(&4));
     /// assert!(!(..5).contains(&5));
@@ -330,59 +329,24 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// assert_eq!(arr[1..=3], [  1,2,3  ]);  // RangeInclusive
 /// ```
 #[doc(alias = "..=")]
-#[derive(Clone)] // not Copy -- see #27186
+#[derive(Clone, PartialEq, Eq, Hash)] // not Copy -- see #27186
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 pub struct RangeInclusive<Idx> {
+    // Note that the fields here are not public to allow changing the
+    // representation in the future; in particular, while we could plausibly
+    // expose start/end, modifying them without changing (future/current)
+    // private fields may lead to incorrect behavior, so we don't want to
+    // support that mode.
     pub(crate) start: Idx,
     pub(crate) end: Idx,
-    pub(crate) is_empty: Option<bool>,
+
     // This field is:
-    //  - `None` when next() or next_back() was never called
-    //  - `Some(false)` when `start <= end` assuming no overflow
-    //  - `Some(true)` otherwise
-    // The field cannot be a simple `bool` because the `..=` constructor can
-    // accept non-PartialOrd types, also we want the constructor to be const.
-}
-
-trait RangeInclusiveEquality: Sized {
-    fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool;
-}
-
-impl<T> RangeInclusiveEquality for T {
-    #[inline]
-    default fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
-        range.is_empty.unwrap_or_default()
-    }
-}
-
-impl<T: PartialOrd> RangeInclusiveEquality for T {
-    #[inline]
-    fn canonicalized_is_empty(range: &RangeInclusive<Self>) -> bool {
-        range.is_empty()
-    }
-}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: PartialEq> PartialEq for RangeInclusive<Idx> {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        self.start == other.start
-            && self.end == other.end
-            && RangeInclusiveEquality::canonicalized_is_empty(self)
-                == RangeInclusiveEquality::canonicalized_is_empty(other)
-    }
-}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: Eq> Eq for RangeInclusive<Idx> {}
-
-#[stable(feature = "inclusive_range", since = "1.26.0")]
-impl<Idx: Hash> Hash for RangeInclusive<Idx> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.start.hash(state);
-        self.end.hash(state);
-        RangeInclusiveEquality::canonicalized_is_empty(self).hash(state);
-    }
+    //  - `false` upon construction
+    //  - `false` when iteration has yielded an element and the iterator is not exhausted
+    //  - `true` when iteration has been used to exhaust the iterator
+    //
+    // This is required to support PartialEq and Hash without a PartialOrd bound or specialization.
+    pub(crate) exhausted: bool,
 }
 
 impl<Idx> RangeInclusive<Idx> {
@@ -398,12 +362,9 @@ impl<Idx> RangeInclusive<Idx> {
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
     #[rustc_promotable]
+    #[rustc_const_stable(feature = "const_range_new", since = "1.32.0")]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self {
-            start,
-            end,
-            is_empty: None,
-        }
+        Self { start, end, exhausted: false }
     }
 
     /// Returns the lower bound of the range (inclusive).
@@ -425,6 +386,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// assert_eq!((3..=5).start(), &3);
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0")]
     #[inline]
     pub const fn start(&self) -> &Idx {
         &self.start
@@ -449,6 +411,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// assert_eq!((3..=5).end(), &5);
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
+    #[rustc_const_stable(feature = "const_inclusive_range_methods", since = "1.32.0")]
     #[inline]
     pub const fn end(&self) -> &Idx {
         &self.end
@@ -477,6 +440,9 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeInclusive<Idx> {
         self.start.fmt(fmt)?;
         write!(fmt, "..=")?;
         self.end.fmt(fmt)?;
+        if self.exhausted {
+            write!(fmt, " (exhausted)")?;
+        }
         Ok(())
     }
 }
@@ -487,8 +453,6 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!(!(3..=5).contains(&2));
     /// assert!( (3..=5).contains(&3));
     /// assert!( (3..=5).contains(&4));
@@ -529,10 +493,9 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     /// ```
     /// #![feature(range_is_empty)]
     ///
-    /// use std::f32::NAN;
     /// assert!(!(3.0..=5.0).is_empty());
-    /// assert!( (3.0..=NAN).is_empty());
-    /// assert!( (NAN..=5.0).is_empty());
+    /// assert!( (3.0..=f32::NAN).is_empty());
+    /// assert!( (f32::NAN..=5.0).is_empty());
     /// ```
     ///
     /// This method returns `true` after iteration has finished:
@@ -548,15 +511,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
     #[unstable(feature = "range_is_empty", reason = "recently added", issue = "48111")]
     #[inline]
     pub fn is_empty(&self) -> bool {
-        self.is_empty.unwrap_or_else(|| !(self.start <= self.end))
-    }
-
-    // If this range's `is_empty` is field is unknown (`None`), update it to be a concrete value.
-    #[inline]
-    pub(crate) fn compute_is_empty(&mut self) {
-        if self.is_empty.is_none() {
-            self.is_empty = Some(!(self.start <= self.end));
-        }
+        self.exhausted || !(self.start <= self.end)
     }
 }
 
@@ -624,8 +579,6 @@ impl<Idx: PartialOrd<Idx>> RangeToInclusive<Idx> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!( (..=5).contains(&-1_000_000_000));
     /// assert!( (..=5).contains(&5));
     /// assert!(!(..=5).contains(&6));
@@ -764,8 +717,6 @@ pub trait RangeBounds<T: ?Sized> {
     /// # Examples
     ///
     /// ```
-    /// use std::f32;
-    ///
     /// assert!( (3..5).contains(&4));
     /// assert!(!(3..5).contains(&2));
     ///

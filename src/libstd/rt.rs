@@ -6,12 +6,13 @@
 //! and should be considered as private implementation details for the
 //! time being.
 
-#![unstable(feature = "rt",
-            reason = "this public module should not exist and is highly likely \
-                      to disappear",
-            issue = "0")]
+#![unstable(
+    feature = "rt",
+    reason = "this public module should not exist and is highly likely \
+              to disappear",
+    issue = "none"
+)]
 #![doc(hidden)]
-
 
 // Re-export some of our utilities which are expected by other crates.
 pub use crate::panicking::{begin_panic, begin_panic_fmt};
@@ -22,8 +23,11 @@ pub use crate::panicking::update_panic_count;
 // the real work.
 #[cfg(not(test))]
 #[cfg(not(target_arch = "bpf"))]
-fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindSafe),
-                       argc: isize, argv: *const *const u8) -> isize {
+fn lang_start_internal(
+    main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindSafe),
+    argc: isize,
+    argv: *const *const u8,
+) -> isize {
     use crate::panic;
     use crate::sys;
     use crate::sys_common;
@@ -62,8 +66,10 @@ fn lang_start_internal(main: &(dyn Fn() -> i32 + Sync + crate::panic::RefUnwindS
 #[cfg(not(test))]
 #[cfg(not(target_arch = "bpf"))]
 #[lang = "start"]
-fn lang_start<T: crate::process::Termination + 'static>
-    (main: fn() -> T, argc: isize, argv: *const *const u8) -> isize
-{
+fn lang_start<T: crate::process::Termination + 'static>(
+    main: fn() -> T,
+    argc: isize,
+    argv: *const *const u8,
+) -> isize {
     lang_start_internal(&move || main().report(), argc, argv)
 }

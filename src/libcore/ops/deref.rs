@@ -18,8 +18,8 @@
 ///
 /// If `T` implements `Deref<Target = U>`, and `x` is a value of type `T`, then:
 ///
-/// * In immutable contexts, `*x` on non-pointer types is equivalent to
-///   `*Deref::deref(&x)`.
+/// * In immutable contexts, `*x` (where `T` is neither a reference nor a raw pointer)
+///   is equivalent to `*Deref::deref(&x)`.
 /// * Values of type `&T` are coerced to values of type `&U`
 /// * `T` implicitly implements all the (immutable) methods of the type `U`.
 ///
@@ -76,14 +76,21 @@ pub trait Deref {
 impl<T: ?Sized> Deref for &T {
     type Target = T;
 
-    fn deref(&self) -> &T { *self }
+    fn deref(&self) -> &T {
+        *self
+    }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized> !DerefMut for &T {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for &mut T {
     type Target = T;
 
-    fn deref(&self) -> &T { *self }
+    fn deref(&self) -> &T {
+        *self
+    }
 }
 
 /// Used for mutable dereferencing operations, like in `*v = 1;`.
@@ -108,8 +115,8 @@ impl<T: ?Sized> Deref for &mut T {
 /// If `T` implements `DerefMut<Target = U>`, and `x` is a value of type `T`,
 /// then:
 ///
-/// * In mutable contexts, `*x` on non-pointer types is equivalent to
-///   `*DerefMut::deref_mut(&mut x)`.
+/// * In mutable contexts, `*x` (where `T` is neither a reference nor a raw pointer)
+///   is equivalent to `*DerefMut::deref_mut(&mut x)`.
 /// * Values of type `&mut T` are coerced to values of type `&mut U`
 /// * `T` implicitly implements all the (mutable) methods of the type `U`.
 ///
@@ -165,21 +172,23 @@ pub trait DerefMut: Deref {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for &mut T {
-    fn deref_mut(&mut self) -> &mut T { *self }
+    fn deref_mut(&mut self) -> &mut T {
+        *self
+    }
 }
 
 /// Indicates that a struct can be used as a method receiver, without the
 /// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
 /// `Rc<T>`, `&T`, and `Pin<P>`.
 #[lang = "receiver"]
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 #[doc(hidden)]
 pub trait Receiver {
     // Empty.
 }
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for &T {}
 
-#[unstable(feature = "receiver_trait", issue = "0")]
+#[unstable(feature = "receiver_trait", issue = "none")]
 impl<T: ?Sized> Receiver for &mut T {}

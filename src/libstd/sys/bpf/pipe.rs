@@ -8,8 +8,14 @@ impl AnonPipe {
         match self.0 {}
     }
 
+
     pub fn read_vectored(&self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self.0 {}
+    }
+    
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        false
     }
 
     pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
@@ -18,6 +24,11 @@ impl AnonPipe {
 
     pub fn write_vectored(&self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         match self.0 {}
+    }
+
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        false
     }
 
     pub fn diverge(&self) -> ! {

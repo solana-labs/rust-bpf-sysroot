@@ -6,10 +6,14 @@ use crate::cell::RefCell;
 use crate::fmt;
 #[cfg(not(target_arch = "bpf"))]
 use crate::io::lazy::Lazy;
-use crate::io::{self, Initializer, BufReader, LineWriter, IoSlice, IoSliceMut};
+use crate::io::{self, BufReader, Initializer, IoSlice, IoSliceMut, LineWriter};
 use crate::sync::{Arc, Mutex, MutexGuard};
+#[cfg(not(target_arch = "bpf"))]
+use crate::sync::{Once};
 use crate::sys::stdio;
 use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
+#[cfg(not(target_arch = "bpf"))]
+use crate::thread::LocalKey;
 
 #[cfg(not(target_arch = "bpf"))]
 thread_local! {
@@ -53,7 +57,9 @@ struct StderrRaw(stdio::Stderr);
 ///
 /// The returned handle has no external synchronization or buffering.
 #[cfg(not(target_arch = "bpf"))]
-fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
+fn stdin_raw() -> io::Result<StdinRaw> {
+    stdio::Stdin::new().map(StdinRaw)
+}
 
 /// Constructs a new raw handle to the standard output stream of this process.
 ///
@@ -65,7 +71,9 @@ fn stdin_raw() -> io::Result<StdinRaw> { stdio::Stdin::new().map(StdinRaw) }
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
 #[cfg(not(target_arch = "bpf"))]
-fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
+fn stdout_raw() -> io::Result<StdoutRaw> {
+    stdio::Stdout::new().map(StdoutRaw)
+}
 
 /// Constructs a new raw handle to the standard error stream of this process.
 ///
@@ -75,37 +83,102 @@ fn stdout_raw() -> io::Result<StdoutRaw> { stdio::Stdout::new().map(StdoutRaw) }
 /// The returned handle has no external synchronization or buffering layered on
 /// top.
 #[cfg(not(target_arch = "bpf"))]
-fn stderr_raw() -> io::Result<StderrRaw> { stdio::Stderr::new().map(StderrRaw) }
+fn stderr_raw() -> io::Result<StderrRaw> {
+    stdio::Stderr::new().map(StderrRaw)
+}
 
 impl Read for StdinRaw {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.0.read(buf)
+    }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.0.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.0.read_to_end(buf)
+    }
+
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.0.read_to_string(buf)
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.0.read_exact(buf)
+    }
 }
+
 impl Write for StdoutRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
-    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.0.write_all_vectored(bufs)
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.0.write_fmt(fmt)
+    }
 }
+
 impl Write for StderrRaw {
-    fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
-    fn flush(&mut self) -> io::Result<()> { self.0.flush() }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.0.is_write_vectored()
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.0.write_all_vectored(bufs)
+    }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
+        self.0.write_fmt(fmt)
+    }
 }
 
 #[allow(dead_code)]
@@ -118,7 +191,7 @@ impl<W: io::Write> io::Write for Maybe<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.write(buf), buf.len()),
-            Maybe::Fake => Ok(buf.len())
+            Maybe::Fake => Ok(buf.len()),
         }
     }
 
@@ -130,10 +203,18 @@ impl<W: io::Write> io::Write for Maybe<W> {
         }
     }
 
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        match self {
+            Maybe::Real(w) => w.is_write_vectored(),
+            Maybe::Fake => true,
+        }
+    }
+
     fn flush(&mut self) -> io::Result<()> {
         match *self {
             Maybe::Real(ref mut w) => handle_ebadf(w.flush(), ()),
-            Maybe::Fake => Ok(())
+            Maybe::Fake => Ok(()),
         }
     }
 }
@@ -142,14 +223,22 @@ impl<R: io::Read> io::Read for Maybe<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match *self {
             Maybe::Real(ref mut r) => handle_ebadf(r.read(buf), 0),
-            Maybe::Fake => Ok(0)
+            Maybe::Fake => Ok(0),
         }
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self {
             Maybe::Real(r) => handle_ebadf(r.read_vectored(bufs), 0),
-            Maybe::Fake => Ok(0)
+            Maybe::Fake => Ok(0),
+        }
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        match self {
+            Maybe::Real(w) => w.is_read_vectored(),
+            Maybe::Fake => true,
         }
     }
 }
@@ -157,7 +246,7 @@ impl<R: io::Read> io::Read for Maybe<R> {
 fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
     match r {
         Err(ref e) if stdio::is_ebadf(e) => Ok(default),
-        r => r
+        r => r,
     }
 }
 
@@ -249,16 +338,14 @@ pub struct StdinLock<'a> {
 pub fn stdin() -> Stdin {
     static INSTANCE: Lazy<Mutex<BufReader<Maybe<StdinRaw>>>> = Lazy::new();
     return Stdin {
-        inner: unsafe {
-            INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown")
-        },
+        inner: unsafe { INSTANCE.get(stdin_init).expect("cannot access stdin during shutdown") },
     };
 
     fn stdin_init() -> Arc<Mutex<BufReader<Maybe<StdinRaw>>>> {
         // This must not reentrantly access `INSTANCE`
         let stdin = match stdin_raw() {
             Ok(stdin) => Maybe::Real(stdin),
-            _ => Maybe::Fake
+            _ => Maybe::Fake,
         };
 
         Arc::new(Mutex::new(BufReader::with_capacity(stdio::STDIN_BUF_SIZE, stdin)))
@@ -295,7 +382,7 @@ impl Stdin {
         StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 
-    /// Locks this handle and reads a line of input into the specified buffer.
+    /// Locks this handle and reads a line of input, appending it to the specified buffer.
     ///
     /// For detailed semantics of this method, see the documentation on
     /// [`BufRead::read_line`].
@@ -345,6 +432,10 @@ impl Read for Stdin {
         self.lock().read_vectored(bufs)
     }
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.lock().is_read_vectored()
+    }
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
     }
@@ -370,15 +461,45 @@ impl Read for StdinLock<'_> {
     }
 
     #[inline]
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
+    }
+
+    #[inline]
     unsafe fn initializer(&self) -> Initializer {
         Initializer::nop()
+    }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
+
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.inner.read_to_string(buf)
+    }
+
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.inner.read_exact(buf)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BufRead for StdinLock<'_> {
-    fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, n: usize) { self.inner.consume(n) }
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        self.inner.fill_buf()
+    }
+
+    fn consume(&mut self, n: usize) {
+        self.inner.consume(n)
+    }
+
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_until(byte, buf)
+    }
+
+    fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.inner.read_line(buf)
+    }
 }
 
 #[stable(feature = "std_debug", since = "1.16.0")]
@@ -474,9 +595,7 @@ pub struct StdoutLock<'a> {
 pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> = Lazy::new();
     return Stdout {
-        inner: unsafe {
-            INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown")
-        },
+        inner: unsafe { INSTANCE.get(stdout_init).expect("cannot access stdout during shutdown") },
     };
 
     fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<Maybe<StdoutRaw>>>>> {
@@ -485,7 +604,11 @@ pub fn stdout() -> Stdout {
             Ok(stdout) => Maybe::Real(stdout),
             _ => Maybe::Fake,
         };
-        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))))
+        unsafe {
+            let ret = Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout))));
+            ret.init();
+            ret
+        }
     }
 }
 
@@ -512,7 +635,7 @@ impl Stdout {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock<'_> {
-        StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StdoutLock { inner: self.inner.lock() }
     }
 }
 
@@ -531,11 +654,18 @@ impl Write for Stdout {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.lock().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.lock().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.lock().write_all_vectored(bufs)
     }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
@@ -549,8 +679,18 @@ impl Write for StdoutLock<'_> {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.borrow_mut().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.borrow_mut().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all_vectored(bufs)
     }
 }
 
@@ -573,7 +713,7 @@ impl fmt::Debug for StdoutLock<'_> {
 /// an error.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>>,
+    inner: &'static ReentrantMutex<RefCell<Maybe<StderrRaw>>>,
 }
 
 /// A locked reference to the `Stderr` handle.
@@ -632,21 +772,28 @@ pub struct StderrLock<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(target_arch = "bpf"))]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> = Lazy::new();
-    return Stderr {
-        inner: unsafe {
-            INSTANCE.get(stderr_init).expect("cannot access stderr during shutdown")
-        },
-    };
+    // Note that unlike `stdout()` we don't use `Lazy` here which registers a
+    // destructor. Stderr is not buffered nor does the `stderr_raw` type consume
+    // any owned resources, so there's no need to run any destructors at some
+    // point in the future.
+    //
+    // This has the added benefit of allowing `stderr` to be usable during
+    // process shutdown as well!
+    static INSTANCE: ReentrantMutex<RefCell<Maybe<StderrRaw>>> =
+        unsafe { ReentrantMutex::new(RefCell::new(Maybe::Fake)) };
 
-    fn stderr_init() -> Arc<ReentrantMutex<RefCell<Maybe<StderrRaw>>>> {
-        // This must not reentrantly access `INSTANCE`
-        let stderr = match stderr_raw() {
-            Ok(stderr) => Maybe::Real(stderr),
-            _ => Maybe::Fake,
-        };
-        Arc::new(ReentrantMutex::new(RefCell::new(stderr)))
-    }
+    // When accessing stderr we need one-time initialization of the reentrant
+    // mutex, followed by one-time detection of whether we actually have a
+    // stderr handle or not. Afterwards we can just always use the now-filled-in
+    // `INSTANCE` value.
+    static INIT: Once = Once::new();
+    INIT.call_once(|| unsafe {
+        INSTANCE.init();
+        if let Ok(stderr) = stderr_raw() {
+            *INSTANCE.lock().borrow_mut() = Maybe::Real(stderr);
+        }
+    });
+    Stderr { inner: &INSTANCE }
 }
 
 impl Stderr {
@@ -672,7 +819,7 @@ impl Stderr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock<'_> {
-        StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
+        StderrLock { inner: self.inner.lock() }
     }
 }
 
@@ -691,11 +838,18 @@ impl Write for Stderr {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.lock().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.lock().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.lock().flush()
     }
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.lock().write_all_vectored(bufs)
     }
     fn write_fmt(&mut self, args: fmt::Arguments<'_>) -> io::Result<()> {
         self.lock().write_fmt(args)
@@ -709,8 +863,18 @@ impl Write for StderrLock<'_> {
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.borrow_mut().write_vectored(bufs)
     }
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        self.inner.borrow_mut().is_write_vectored()
+    }
     fn flush(&mut self) -> io::Result<()> {
         self.inner.borrow_mut().flush()
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all(buf)
+    }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.inner.borrow_mut().write_all_vectored(bufs)
     }
 }
 
@@ -729,17 +893,17 @@ impl fmt::Debug for StderrLock<'_> {
 ///
 /// Note that this does not need to be called for all new threads; the default
 /// output handle is to the process's stderr stream.
-#[unstable(feature = "set_stdio",
-           reason = "this function may disappear completely or be replaced \
+#[unstable(
+    feature = "set_stdio",
+    reason = "this function may disappear completely or be replaced \
                      with a more general mechanism",
-           issue = "0")]
+    issue = "none"
+)]
 #[doc(hidden)]
 #[cfg(not(target_arch = "bpf"))]
 pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDERR.with(move |slot| {
-        mem::replace(&mut *slot.borrow_mut(), sink)
-    }).and_then(|mut s| {
+    LOCAL_STDERR.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -753,17 +917,17 @@ pub fn set_panic(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 ///
 /// Note that this does not need to be called for all new threads; the default
 /// output handle is to the process's stdout stream.
-#[unstable(feature = "set_stdio",
-           reason = "this function may disappear completely or be replaced \
+#[unstable(
+    feature = "set_stdio",
+    reason = "this function may disappear completely or be replaced \
                      with a more general mechanism",
-           issue = "0")]
+    issue = "none"
+)]
 #[doc(hidden)]
 #[cfg(not(target_arch = "bpf"))]
 pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + Send>> {
     use crate::mem;
-    LOCAL_STDOUT.with(move |slot| {
-        mem::replace(&mut *slot.borrow_mut(), sink)
-    }).and_then(|mut s| {
+    LOCAL_STDOUT.with(move |slot| mem::replace(&mut *slot.borrow_mut(), sink)).and_then(|mut s| {
         let _ = s.flush();
         Some(s)
     })
@@ -773,7 +937,7 @@ pub fn set_print(sink: Option<Box<dyn Write + Send>>) -> Option<Box<dyn Write + 
 /// otherwise. `label` identifies the stream in a panic message.
 ///
 /// This function is used to print error messages, so it takes extra
-/// care to avoid causing a panic when `local_stream` is unusable.
+/// care to avoid causing a panic when `local_s` is unusable.
 /// For instance, if the TLS key for the local stream is
 /// already destroyed, or if the local stream is locked by another
 /// thread, it will just fall back to the global stream.
@@ -785,29 +949,34 @@ fn print_to<T>(
     local_s: &'static crate::thread::LocalKey<RefCell<Option<Box<dyn Write+Send>>>>,
     global_s: fn() -> T,
     label: &str,
-)
-where
+) where
     T: Write,
 {
-    let result = local_s.try_with(|s| {
-        if let Ok(mut borrowed) = s.try_borrow_mut() {
-            if let Some(w) = borrowed.as_mut() {
-                return w.write_fmt(args);
+    let result = local_s
+        .try_with(|s| {
+            // Note that we completely remove a local sink to write to in case
+            // our printing recursively panics/prints, so the recursive
+            // panic/print goes to the global sink instead of our local sink.
+            let prev = s.borrow_mut().take();
+            if let Some(mut w) = prev {
+                let result = w.write_fmt(args);
+                *s.borrow_mut() = Some(w);
+                return result;
             }
-        }
-        global_s().write_fmt(args)
-    }).unwrap_or_else(|_| {
-        global_s().write_fmt(args)
-    });
+            global_s().write_fmt(args)
+        })
+        .unwrap_or_else(|_| global_s().write_fmt(args));
 
     if let Err(e) = result {
         panic!("failed printing to {}: {}", label, e);
     }
 }
 
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+#[unstable(
+    feature = "print_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
 #[doc(hidden)]
 #[cfg(not(test))]
 #[cfg(not(target_arch = "bpf"))]
@@ -816,16 +985,18 @@ pub fn _print(args: fmt::Arguments<'_>) {
 }
 #[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+           issue = "none")]
 #[doc(hidden)]
 #[cfg(not(test))]
 #[cfg(target_arch = "bpf")]
 pub fn _print(_args: fmt::Arguments<'_>) {
 }
 
-#[unstable(feature = "print_internals",
-           reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+#[unstable(
+    feature = "print_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
 #[doc(hidden)]
 #[cfg(not(test))]
 #[cfg(not(target_arch = "bpf"))]
@@ -834,7 +1005,7 @@ pub fn _eprint(args: fmt::Arguments<'_>) {
 }
 #[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
-           issue = "0")]
+           issue = "none")]
 #[doc(hidden)]
 #[cfg(not(test))]
 #[cfg(target_arch = "bpf")]
@@ -846,9 +1017,9 @@ pub use realstd::io::{_eprint, _print};
 
 #[cfg(test)]
 mod tests {
-    use crate::panic::{UnwindSafe, RefUnwindSafe};
-    use crate::thread;
     use super::*;
+    use crate::panic::{RefUnwindSafe, UnwindSafe};
+    use crate::thread;
 
     #[test]
     fn stdout_unwind_safe() {
@@ -882,7 +1053,9 @@ mod tests {
             let _a = stderr();
             let _a = _a.lock();
             panic!();
-        }).join().unwrap_err();
+        })
+        .join()
+        .unwrap_err();
 
         let _a = stdin();
         let _a = _a.lock();

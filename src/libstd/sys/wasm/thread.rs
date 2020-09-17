@@ -9,9 +9,7 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>)
-        -> io::Result<Thread>
-    {
+    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         unsupported()
     }
 
@@ -40,7 +38,7 @@ impl Thread {
         // 2).
         let mut nanos = dur.as_nanos();
         while nanos > 0 {
-            let amt = cmp::min(i64::max_value() as u128, nanos);
+            let amt = cmp::min(i64::MAX as u128, nanos);
             let mut x = 0;
             let val = unsafe { wasm32::i32_atomic_wait(&mut x, 0, amt as i64) };
             debug_assert_eq!(val, 2);
@@ -55,8 +53,12 @@ impl Thread {
 
 pub mod guard {
     pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> { None }
-    pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn current() -> Option<Guard> {
+        None
+    }
+    pub unsafe fn init() -> Option<Guard> {
+        None
+    }
 }
 
 // This is only used by atomics primitives when the `atomics` feature is
@@ -84,9 +86,7 @@ pub fn my_id() -> u32 {
         if MY_ID == 0 {
             let mut cur = NEXT_ID.load(SeqCst);
             MY_ID = loop {
-                let next = cur.checked_add(1).unwrap_or_else(|| {
-                    crate::arch::wasm32::unreachable()
-                });
+                let next = cur.checked_add(1).unwrap_or_else(|| crate::arch::wasm32::unreachable());
                 match NEXT_ID.compare_exchange(cur, next, SeqCst, SeqCst) {
                     Ok(_) => break next,
                     Err(i) => cur = i,

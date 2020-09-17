@@ -204,6 +204,11 @@ impl File {
         match self.0 {}
     }
 
+   #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        false
+    }
+
     pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
         match self.0 {}
     }
@@ -212,6 +217,11 @@ impl File {
         match self.0 {}
     }
 
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        false
+    }
+    
     pub fn flush(&self) -> io::Result<()> {
         match self.0 {}
     }

@@ -1,36 +1,32 @@
 use crate::cell::UnsafeCell;
 
 pub struct Mutex {
-    locked: UnsafeCell<bool>,
+    inner: UnsafeCell<bool>,
 }
 
 unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {} // no threads on BPF
 
+#[allow(dead_code)] // sys isn't exported yet
 impl Mutex {
     pub const fn new() -> Mutex {
-        Mutex { locked: UnsafeCell::new(false) }
+        Mutex { inner: UnsafeCell::new(false) }
     }
-
     #[inline]
-    pub unsafe fn init(&mut self) {
-    }
-
+    pub unsafe fn init(&self) {}
     #[inline]
     pub unsafe fn lock(&self) {
-        let locked = self.locked.get();
+        let locked = self.inner.get();
         assert!(!*locked, "cannot recursively acquire mutex");
         *locked = true;
     }
-
     #[inline]
     pub unsafe fn unlock(&self) {
-        *self.locked.get() = false;
+        *self.inner.get() = false;
     }
-
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        let locked = self.locked.get();
+        let locked = self.inner.get();
         if *locked {
             false
         } else {
@@ -38,34 +34,24 @@ impl Mutex {
             true
         }
     }
-
     #[inline]
     pub unsafe fn destroy(&self) {
     }
 }
 
-// All empty stubs because BPF has no threads yet, so lock acquisition always
+// All empty stubs because BPF has no threads, lock acquisition always
 // succeeds.
 pub struct ReentrantMutex {
+    pub inner: UnsafeCell<bool>,
 }
 
 impl ReentrantMutex {
-    #[cfg(not(target_arch = "bpf"))]
-    pub unsafe fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { }
-    }
-
-    #[cfg(not(target_arch = "bpf"))]
-    pub unsafe fn init(&mut self) {}
-
+    // pub unsafe fn init(&self) {}
     pub unsafe fn lock(&self) {}
-
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
         true
     }
-
     pub unsafe fn unlock(&self) {}
-
     pub unsafe fn destroy(&self) {}
 }

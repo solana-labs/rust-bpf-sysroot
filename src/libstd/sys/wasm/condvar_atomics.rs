@@ -48,7 +48,7 @@ impl Condvar {
     #[inline]
     pub unsafe fn notify_all(&self) {
         self.cnt.fetch_add(1, SeqCst);
-        wasm32::atomic_notify(self.ptr(), u32::max_value()); // -1 == "wake everyone"
+        wasm32::atomic_notify(self.ptr(), u32::MAX); // -1 == "wake everyone"
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {
@@ -72,13 +72,13 @@ impl Condvar {
         let ticket = self.cnt.load(SeqCst) as i32;
         mutex.unlock();
         let nanos = dur.as_nanos();
-        let nanos = cmp::min(i64::max_value() as u128, nanos);
+        let nanos = cmp::min(i64::MAX as u128, nanos);
 
         // If the return value is 2 then a timeout happened, so we return
         // `false` as we weren't actually notified.
         let ret = wasm32::i32_atomic_wait(self.ptr(), ticket, nanos as i64) != 2;
         mutex.lock();
-        return ret
+        return ret;
     }
 
     #[inline]
@@ -89,6 +89,6 @@ impl Condvar {
     #[inline]
     fn ptr(&self) -> *mut i32 {
         assert_eq!(mem::size_of::<usize>(), mem::size_of::<i32>());
-        &self.cnt as *const AtomicUsize as *mut i32
+        self.cnt.as_mut_ptr() as *mut i32
     }
 }

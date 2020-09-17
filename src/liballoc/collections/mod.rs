@@ -42,10 +42,11 @@ pub use linked_list::LinkedList;
 pub use vec_deque::VecDeque;
 
 use crate::alloc::{Layout, LayoutErr};
+use core::fmt::Display;
 
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 pub enum TryReserveError {
     /// Error due to the computed capacity exceeding the collection's maximum
     /// (usually `isize::MAX` bytes).
@@ -57,19 +58,40 @@ pub enum TryReserveError {
         layout: Layout,
 
         #[doc(hidden)]
-        #[unstable(feature = "container_error_extra", issue = "0", reason = "\
+        #[unstable(
+            feature = "container_error_extra",
+            issue = "none",
+            reason = "\
             Enable exposing the allocator’s custom error value \
             if an associated type is added in the future: \
-            https://github.com/rust-lang/wg-allocators/issues/23")]
+            https://github.com/rust-lang/wg-allocators/issues/23"
+        )]
         non_exhaustive: (),
     },
 }
 
-#[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
 impl From<LayoutErr> for TryReserveError {
     #[inline]
     fn from(_: LayoutErr) -> Self {
         TryReserveError::CapacityOverflow
+    }
+}
+
+#[unstable(feature = "try_reserve", reason = "new API", issue = "48043")]
+impl Display for TryReserveError {
+    fn fmt(
+        &self,
+        fmt: &mut core::fmt::Formatter<'_>,
+    ) -> core::result::Result<(), core::fmt::Error> {
+        fmt.write_str("memory allocation failed")?;
+        let reason = match &self {
+            TryReserveError::CapacityOverflow => {
+                " because the computed capacity exceeded the collection's maximum"
+            }
+            TryReserveError::AllocError { .. } => " because the memory allocator returned a error",
+        };
+        fmt.write_str(reason)
     }
 }
 

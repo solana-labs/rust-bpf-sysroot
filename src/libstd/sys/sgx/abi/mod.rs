@@ -1,11 +1,11 @@
 #![cfg_attr(test, allow(unused))] // RT initialization logic is not compiled for test
 
-use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::io::Write;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 // runtime features
-mod reloc;
 pub(super) mod panic;
+mod reloc;
 
 // library features
 pub mod mem;
@@ -38,14 +38,16 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
         UNINIT => {
             reloc::relocate_elf_rela();
             RELOC_STATE.store(DONE, Ordering::Release);
-        },
+        }
         // We need to wait until the initialization is done.
-        BUSY => while RELOC_STATE.load(Ordering::Acquire) == BUSY  {
-            core::arch::x86_64::_mm_pause()
-        },
+        BUSY => {
+            while RELOC_STATE.load(Ordering::Acquire) == BUSY {
+                core::arch::x86_64::_mm_pause()
+            }
+        }
         // Initialization is done.
-        DONE => {},
-        _ => unreachable!()
+        DONE => {}
+        _ => unreachable!(),
     }
 }
 
@@ -54,6 +56,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
 // able to specify this
 #[cfg(not(test))]
 #[no_mangle]
+#[allow(improper_ctypes_definitions)]
 extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64) -> (u64, u64) {
     // FIXME: how to support TLS in library mode?
     let tls = Box::new(tls::Tls::new());

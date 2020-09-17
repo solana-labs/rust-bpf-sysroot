@@ -17,14 +17,15 @@ use crate::fmt;
 
 /// Determines whether the current thread is unwinding because of panic.
 pub fn panicking() -> bool {
-    true
-}
+            true
+    }
 
 /// Entry point of panic from the libcore crate.
 #[cfg(not(test))]
 #[panic_handler]
 #[unwind(allowed)]
 pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
+    crate::sys::sol_log("libstd rust_begin_panic");
     crate::sys::panic(info);
 }
 
@@ -34,33 +35,32 @@ pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
 /// site as much as possible (so that `panic!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
-#[unstable(feature = "libstd_sys_internals",
-           reason = "used by the panic! macro",
-           issue = "0")]
+#[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
 #[cold]
 // If panic_immediate_abort, inline the abort call,
 // otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
-#[cfg_attr(    feature="panic_immediate_abort" ,inline)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 pub fn begin_panic_fmt(_msg: &fmt::Arguments<'_>,
                        file_line_col: &(&'static str, u32, u32)) -> ! {
+    crate::sys::sol_log("libstd begin_panic_fmt");
     begin_panic(file_line_col);
-}
+    }
 
 /// Entry point of panicking for panic!() and assert!().
-#[unstable(feature = "libstd_sys_internals",
-           reason = "used by the panic! macro",
-           issue = "0")]
+#[unstable(feature = "libstd_sys_internals", reason = "used by the panic! macro", issue = "none")]
 #[cfg_attr(not(test), lang = "begin_panic")]
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
-#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[cold]
 pub fn begin_panic(file_line_col: &(&'static str, u32, u32)) -> ! {
+    crate::sys::sol_log("libstd begin_panic");
     let (file, line, col) = *file_line_col;
+    let location = Location::internal_constructor(file, line, col);
     let info = PanicInfo::internal_constructor(
         None,
-        Location::internal_constructor(file, line, col),
+        &location,
     );
     crate::sys::panic(&info);
 }

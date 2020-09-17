@@ -31,6 +31,11 @@ impl TcpStream {
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         match self.0 {}
     }
+    
+    #[inline]
+    pub fn is_write_vectored(&self) -> bool {
+        false
+    }
 
     pub fn peek(&self, _: &mut [u8]) -> io::Result<usize> {
         match self.0 {}
@@ -42,6 +47,11 @@ impl TcpStream {
 
     pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self.0 {}
+    }
+    
+    #[inline]
+    pub fn is_read_vectored(&self) -> bool {
+        false
     }
 
     pub fn write(&self, _: &[u8]) -> io::Result<usize> {

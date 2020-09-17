@@ -91,9 +91,9 @@
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    message="a collection of type `{Self}` cannot be built from an iterator \
-             over elements of type `{A}`",
-    label="a collection of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+    message = "a value of type `{Self}` cannot be built from an iterator \
+               over elements of type `{A}`",
+    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
 )]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
@@ -116,7 +116,7 @@ pub trait FromIterator<A>: Sized {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> Self;
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
 /// Conversion into an `Iterator`.
@@ -167,7 +167,7 @@ pub trait FromIterator<A>: Sized {
 /// // and we'll implement IntoIterator
 /// impl IntoIterator for MyCollection {
 ///     type Item = i32;
-///     type IntoIter = ::std::vec::IntoIter<Self::Item>;
+///     type IntoIter = std::vec::IntoIter<Self::Item>;
 ///
 ///     fn into_iter(self) -> Self::IntoIter {
 ///         self.0.into_iter()
@@ -205,6 +205,7 @@ pub trait FromIterator<A>: Sized {
 ///         .collect()
 /// }
 /// ```
+#[rustc_diagnostic_item = "IntoIterator"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated over.
@@ -213,7 +214,7 @@ pub trait IntoIterator {
 
     /// Which kind of iterator are we turning this into?
     #[stable(feature = "rust1", since = "1.0.0")]
-    type IntoIter: Iterator<Item=Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item>;
 
     /// Creates an iterator from a value.
     ///
@@ -321,7 +322,7 @@ impl<I: Iterator> IntoIterator for I {
 pub trait Extend<A> {
     /// Extends a collection with the contents of an iterator.
     ///
-    /// As this is the only method for this trait, the [trait-level] docs
+    /// As this is the only required method for this trait, the [trait-level] docs
     /// contain more details.
     ///
     /// [trait-level]: trait.Extend.html
@@ -339,7 +340,21 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
+    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
+
+    /// Extends a collection with exactly one element.
+    #[unstable(feature = "extend_one", issue = "72631")]
+    fn extend_one(&mut self, item: A) {
+        self.extend(Some(item));
+    }
+
+    /// Reserves capacity in a collection for the given number of additional elements.
+    ///
+    /// The default implementation does nothing.
+    #[unstable(feature = "extend_one", issue = "72631")]
+    fn extend_reserve(&mut self, additional: usize) {
+        let _ = additional;
+    }
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]
@@ -347,4 +362,5 @@ impl Extend<()> for () {
     fn extend<T: IntoIterator<Item = ()>>(&mut self, iter: T) {
         iter.into_iter().for_each(drop)
     }
+    fn extend_one(&mut self, _item: ()) {}
 }
