@@ -1,12 +1,10 @@
 //! Test for `boxed` mod.
 
 use core::any::Any;
+use core::clone::Clone;
 use core::convert::TryInto;
 use core::ops::Deref;
 use core::result::Result::{Err, Ok};
-use core::clone::Clone;
-use core::f64;
-use core::i64;
 
 use std::boxed::Box;
 
