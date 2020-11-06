@@ -437,6 +437,7 @@ pub fn resume_unwind(_payload: Box<dyn Any + Send>) -> ! {
     #[cfg(target_arch = "bpf")]
     {
         // Only used by thread, redirect to plain old panic
-        panicking::begin_panic(&(file!(), line!(), 0))
+        panicking::begin_panic_fmt(&format_args!("unwind"),
+                                   &(file!(), line!(), column!()))
     }
 }

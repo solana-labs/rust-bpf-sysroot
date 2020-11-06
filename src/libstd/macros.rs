@@ -12,20 +12,15 @@ macro_rules! panic {
     () => ({ 
         $crate::panic!("explicit panic")
     });
-    ($msg:expr) => ({  
-        $crate::rt::begin_panic(&($crate::file!(), $crate::line!(), $crate::column!()))
+    ($msg:expr) => ({
+        $crate::panic!("{}", $msg)
     });
     ($msg:expr,) => ({ 
         $crate::panic!($msg)
     });
     ($fmt:expr, $($arg:tt)+) => ({
-        if false {
-            $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+),
-                                        &($crate::file!(), $crate::line!(), $crate::column!()))
-        } else {
-            // Calling `format_args` bloats the final BPF ELF by ~40k, don't do it
-            $crate::rt::begin_panic(&($crate::file!(), $crate::line!(), $crate::column!()))
-        }
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+),
+                                    &($crate::file!(), $crate::line!(), $crate::column!()))
     });
 }
 
