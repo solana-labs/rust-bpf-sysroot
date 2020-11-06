@@ -42,9 +42,9 @@ pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
 // otherwise avoid inlining because of it is cold path.
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[cfg_attr(    feature="panic_immediate_abort" ,inline)]
-pub fn begin_panic_fmt(_msg: &fmt::Arguments<'_>,
+pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>,
                        file_line_col: &(&'static str, u32, u32)) -> ! {
-    begin_panic(file_line_col);
+    begin_panic(msg, file_line_col);
 }
 
 /// Entry point of panicking for panic!() and assert!().
@@ -56,10 +56,10 @@ pub fn begin_panic_fmt(_msg: &fmt::Arguments<'_>,
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[cold]
-pub fn begin_panic(file_line_col: &(&'static str, u32, u32)) -> ! {
+pub fn begin_panic(msg: &fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u32)) -> ! {
     let (file, line, col) = *file_line_col;
     let info = PanicInfo::internal_constructor(
-        None,
+        Some(msg),
         Location::internal_constructor(file, line, col),
     );
     crate::sys::panic(&info);

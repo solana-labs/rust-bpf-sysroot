@@ -14,7 +14,6 @@
 //! guaranteed to be a runtime error!
 
 use crate::os::raw::c_char;
-use crate::ptr;
 
 pub mod alloc;
 pub mod args;
@@ -41,57 +40,23 @@ pub mod thread_local;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
+extern "C" {
+    fn abort() -> !;
+    #[allow(improper_ctypes)]
+    fn custom_panic(info: &core::panic::PanicInfo<'_>);
+    fn sol_log_(message: *const u8, length: u64);
+}
+
 pub fn sol_log(message: &str) {
     unsafe {
         sol_log_(message.as_ptr(), message.len() as u64);
     }
 }
-extern "C" {
-    fn sol_log_(message: *const u8, length: u64);
-}
-
-#[allow(dead_code)]
-pub fn sol_log_64(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64) {
-    unsafe {
-        sol_log_64_(arg1, arg2, arg3, arg4, arg5);
-    }
-}
-extern "C" {
-    fn sol_log_64_(arg1: u64, arg2: u64, arg3: u64, arg4: u64, arg5: u64);
-}
 
 pub fn panic(info: &core::panic::PanicInfo<'_>) -> ! {
-    // Message is ignored for now to avoid incurring formatting overhead
-    match info.location() {
-        Some(location) => {
-            let mut file: [u8; 128] = [0; 128];
-            for (i, c) in location.file().as_bytes().iter().enumerate() {
-                if i > 127 {
-                    break;
-                }
-                file[i] = *c;
-            }
-            unsafe {
-                sol_panic_(
-                    file.as_ptr(),
-                    file.len() as u64,
-                    u64::from(location.line()),
-                    u64::from(location.column()),
-                );
-            }
-        }
-        None => unsafe { 
-            sol_panic_(ptr::null(), 0, 0, 0)
-        },
-    }
+    unsafe { custom_panic(info); }
+    unsafe { abort(); }
 }
-extern "C" {
-    fn sol_panic_(file: *const u8, len: u64, line: u64, column: u64) -> !;
-}
-
-// #[cfg(not(test))]
-// pub fn init() {
-// }
 
 pub fn unsupported<T>() -> crate::io::Result<T> {
     Err(unsupported_err())
@@ -121,7 +86,7 @@ pub unsafe fn strlen(mut s: *const c_char) -> usize {
 }
 
 pub unsafe fn abort_internal() -> ! {
-    sol_panic_(core::ptr::null(), 0, 0, 0);
+    abort()
 }
 
 // We don't have randomness yet, but I totally used a random number generator to
