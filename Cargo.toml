@@ -20,3 +20,22 @@ name = "rust_bpf_sysroot"
 crate-type = ["cdylib"]
 
 
+[dependencies]
+std = { path = "./src/libstd" }
+panic_abort = { path = "./src/libpanic_abort" }
+rustc-std-workspace-alloc = { path = "./src/tools/rustc-std-workspace-alloc" }
+rustc-std-workspace-core = { path = "./src/tools/rustc-std-workspace-core" }
+cfg-if = { path = "./src/cfg-if" }
+libm-bench = { path = "./src/compiler-builtins/libm/crates/libm-bench" }
+libm = { path = "./src/compiler-builtins/libm" }
+panic-handler = { path = "./src/compiler-builtins/crates/panic-handler" }
+compiler_builtins = { path = "./src/compiler-builtins" }
+assert-instr-macro = { path = "./src/stdarch/crates/assert-instr-macro" }
+std_detect = { path = "./src/stdarch/crates/std_detect" }
+stdarch-test = { path = "./src/stdarch/crates/stdarch-test" }
+core_arch = { path = "./src/stdarch/crates/core_arch" }
+simd-test-macro = { path = "./src/stdarch/crates/simd-test-macro" }
+stdarch-verify = { path = "./src/stdarch/crates/stdarch-verify" }
+hashbrown = { path = "./src/hashbrown" }
+core = { path = "./src/libcore" }
+alloc = { path = "./src/liballoc" }
