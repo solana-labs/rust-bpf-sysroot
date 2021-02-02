@@ -22,4 +22,4 @@ install:
       clang-7 --version;
     fi
 script:
-- ./build.sh
+- ./test/build.sh

@@ -20,9 +20,9 @@ The Solana SDK pulls this repo in as source to make it available to [xargo](http
 
 You can build this repo independently of the Solana SDK in the same way that CI ensures the repo stays healthy.  The build script download's Solana's custom [LLVM](https://github.com/solana-labs/llvm-builder) and [rustc](https://github.com/solana-labs/rust-bpf-builder) binaries and updates the forked submodules.  Take a look at `build.sh` for details.  If building on Linux, ensure you are using Ubuntu 16 or newer/compatible since Solana's custom rustc is not compatible with older versions.
 
-To build:
+To build the test:
 ```bash
-./build.sh
+./test/build.sh
 ```
 
 Notes:
