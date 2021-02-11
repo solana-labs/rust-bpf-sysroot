@@ -45,9 +45,7 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
         libc::abort();
     }
 
-    #[cfg(any(windows,
-        all(target_arch = "wasm32", not(target_os = "emscripten")),
-        target_arch = "bpf"))]
+    #[cfg(any(windows, all(target_arch = "wasm32", not(target_os = "emscripten")), target_arch = "bpf"))]
     unsafe fn abort() -> ! {
         core::intrinsics::abort();
     }
@@ -90,18 +88,11 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
 // runtime at all.
 pub mod personalities {
     #[rustc_std_internal_symbol]
-    #[no_mangle]
+    //#[no_mangle]
     #[cfg(not(any(
-        all(
-            target_arch = "wasm32",
-            not(target_os = "emscripten"),
-        ),
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
         target_arch = "bpf",
-        all(
-            target_os = "windows",
-            target_env = "gnu",
-            target_arch = "x86_64",
-        ),
+        all(target_os = "windows", target_env = "gnu", target_arch = "x86_64"),
     )))]
     pub extern "C" fn rust_eh_personality() {}
 

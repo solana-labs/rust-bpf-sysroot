@@ -1,7 +1,6 @@
 use crate::borrow::Cow;
 /// Common code for printing the backtrace in the same way across the different
 /// supported platforms.
-
 #![cfg(not(target_arch = "bpf"))]
 
 use crate::env;

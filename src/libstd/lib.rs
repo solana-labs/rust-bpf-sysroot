@@ -219,8 +219,8 @@
 #![allow(unused_features)]
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(
-   all(target_vendor = "fortanix", target_env = "sgx"),
-   feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
+    all(target_vendor = "fortanix", target_env = "sgx"),
+    feature(slice_index_methods, coerce_unsized, sgx_platform, ptr_wrapping_offset_from)
 )]
 #![cfg_attr(
     all(test, target_vendor = "fortanix", target_env = "sgx"),
@@ -269,7 +269,7 @@
 #![feature(fn_traits)]
 #![feature(format_args_nl)]
 #![feature(future_readiness_fns)]
- #![feature(gen_future)]
+#![feature(gen_future)]
 #![feature(generator_trait)]
 #![feature(global_asm)]
 #![feature(hash_raw_entry)]
@@ -294,9 +294,9 @@
 #![feature(or_patterns)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
-// #![feature(panic_unwind)]
+//#![feature(panic_unwind)]
 #![feature(prelude_import)]
- #![feature(ptr_internals)]
+#![feature(ptr_internals)]
 #![feature(raw)]
 #![feature(raw_ref_macros)]
 #![feature(renamed_spin_loop)]
@@ -310,7 +310,7 @@
 #![feature(std_internals)]
 #![feature(stdsimd)]
 #![feature(stmt_expr_attributes)]
- #![feature(str_internals)]
+#![feature(str_internals)]
 #![feature(test)]
 #![feature(thread_local)]
 #![feature(toowned_clone_into)]
@@ -459,7 +459,8 @@ pub mod f64;
 #[macro_use]
 pub mod thread;
 pub mod ascii;
-// pub mod backtrace;
+#[cfg(not(target_arch = "bpf"))]
+pub mod backtrace;
 pub mod collections;
 pub mod env;
 pub mod error;

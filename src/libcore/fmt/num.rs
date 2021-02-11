@@ -207,32 +207,36 @@ macro_rules! impl_Display {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
                 assert!(crate::mem::size_of::<$u>() >= 2);
 
-                // // eagerly decode 4 characters at a time
-                // while n >= 10000 {
-                //     let rem = (n % 10000) as isize;
-                //     n /= 10000;
+                // eagerly decode 4 characters at a time
+                #[cfg(not(target_arch = "bpf"))]
+                while n >= 10000 {
+                    let rem = (n % 10000) as isize;
+                    n /= 10000;
 
-                //     let d1 = (rem / 100) << 1;
-                //     let d2 = (rem % 100) << 1;
-                //     curr -= 4;
+                    let d1 = (rem / 100) << 1;
+                    let d2 = (rem % 100) << 1;
+                    curr -= 4;
 
-                //     // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
-                //     // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
-                //     // which is `10^40 > 2^128 > n`.
-                //     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                //     ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
-                // }
+                    // We are allowed to copy to `buf_ptr[curr..curr + 3]` here since
+                    // otherwise `curr < 0`. But then `n` was originally at least `10000^10`
+                    // which is `10^40 > 2^128 > n`.
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
+                }
 
                 // if we reach here numbers are <= 9999, so at most 4 chars long
                 let n = n as isize; // possibly reduce 64bit math
 
-                // // decode 2 more chars, if > 2 chars
-                // if n >= 100 {
-                //     let d1 = (n % 100) << 1;
-                //     n /= 100;
-                //     curr -= 2;
-                //     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
-                // }
+                // decode 2 more chars, if > 2 chars
+                #[cfg(not(target_arch = "bpf"))]
+                {
+                    if n >= 100 {
+                        let d1 = (n % 100) << 1;
+                        n /= 100;
+                        curr -= 2;
+                        ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
+                    }
+                }
 
                 // decode last 1 or 2 chars
                 if n < 10 {
@@ -446,10 +450,12 @@ mod imp {
         i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
             as u64 via to_u64 named fmt_u64
     );
-    // impl_Exp!(
-    //     i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
-    //         as u64 via to_u64 named exp_u64
-    // );
+
+    #[cfg(not(target_arch = "bpf"))]
+    impl_Exp!(
+        i8, u8, i16, u16, i32, u32, i64, u64, usize, isize
+            as u64 via to_u64 named exp_u64
+    );
 }
 
 #[cfg(not(any(target_pointer_width = "64", target_arch = "wasm32", target_arch = "bpf")))]
@@ -462,4 +468,6 @@ mod imp {
 }
 
 impl_Display!(i128, u128 as u128 via to_u128 named fmt_u128);
-// impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);
+
+#[cfg(not(target_arch = "bpf"))]
+impl_Exp!(i128, u128 as u128 via to_u128 named exp_u128);

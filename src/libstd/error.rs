@@ -18,7 +18,8 @@ use core::convert::Infallible;
 
 use crate::alloc::{AllocErr, LayoutErr};
 use crate::any::TypeId;
-// use crate::backtrace::Backtrace;
+#[cfg(not(target_arch = "bpf"))]
+use crate::backtrace::Backtrace;
 use crate::borrow::Cow;
 use crate::cell;
 use crate::char;
@@ -115,19 +116,20 @@ pub trait Error: Debug + Display {
         TypeId::of::<Self>()
     }
 
-    // /// Returns a stack backtrace, if available, of where this error occurred.
-    // ///
-    // /// This function allows inspecting the location, in code, of where an error
-    // /// happened. The returned `Backtrace` contains information about the stack
-    // /// trace of the OS thread of execution of where the error originated from.
-    // ///
-    // /// Note that not all errors contain a `Backtrace`. Also note that a
-    // /// `Backtrace` may actually be empty. For more information consult the
-    // /// `Backtrace` type itself.
-    // #[unstable(feature = "backtrace", issue = "53487")]
-    // fn backtrace(&self) -> Option<&Backtrace> {
-    //     None
-    // }
+    /// Returns a stack backtrace, if available, of where this error occurred.
+    ///
+    /// This function allows inspecting the location, in code, of where an error
+    /// happened. The returned `Backtrace` contains information about the stack
+    /// trace of the OS thread of execution of where the error originated from.
+    ///
+    /// Note that not all errors contain a `Backtrace`. Also note that a
+    /// `Backtrace` may actually be empty. For more information consult the
+    /// `Backtrace` type itself.
+    #[unstable(feature = "backtrace", issue = "53487")]
+    #[cfg(not(target_arch = "bpf"))]
+    fn backtrace(&self) -> Option<&Backtrace> {
+        None
+    }
 
     /// ```
     /// if let Err(e) = "xc".parse::<u32>() {
