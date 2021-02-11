@@ -189,7 +189,7 @@ static DEC_DIGITS_LUT: &[u8; 200] = b"0001020304050607080910111213141516171819\
 
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
-        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fn $name(n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
@@ -224,7 +224,7 @@ macro_rules! impl_Display {
                 // }
 
                 // if we reach here numbers are <= 9999, so at most 4 chars long
-                let mut n = n as isize; // possibly reduce 64bit math
+                let n = n as isize; // possibly reduce 64bit math
 
                 // // decode 2 more chars, if > 2 chars
                 // if n >= 100 {
