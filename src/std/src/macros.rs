@@ -11,9 +11,10 @@
 #[cfg_attr(not(any(bootstrap, test)), rustc_diagnostic_item = "std_panic_macro")]
 macro_rules! panic {
     () => ({ $crate::panic!("explicit panic") });
-    ($msg:expr $(,)?) => ({ $crate::rt::begin_panic($msg) });
+    ($msg:expr $(,)?) => ({ $crate::panic!("{}", $msg) });
     ($fmt:expr, $($arg:tt)+) => ({
-        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+))
+        $crate::rt::begin_panic_fmt(&$crate::format_args!($fmt, $($arg)+),
+                                    &($crate::file!(), $crate::line!(), $crate::column!()))
     });
 }
 

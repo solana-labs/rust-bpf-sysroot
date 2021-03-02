@@ -41,6 +41,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_arch = "wasm32")] {
         mod wasm;
         pub use self::wasm::*;
+    } else if #[cfg(target_arch = "bpf")] {
+        mod bpf;
+        pub use self::bpf::*;
     } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
         mod sgx;
         pub use self::sgx::*;

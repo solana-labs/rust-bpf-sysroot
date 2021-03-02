@@ -200,7 +200,7 @@ pub use self::local::fast::Key as __FastLocalKeyInner;
 #[doc(hidden)]
 pub use self::local::os::Key as __OsLocalKeyInner;
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#[cfg(any(target_arch = "bpf", all(target_arch = "wasm32", not(target_feature = "atomics"))))]
 #[doc(hidden)]
 pub use self::local::statik::Key as __StaticLocalKeyInner;
 
@@ -440,7 +440,7 @@ impl Builder {
     ///
     /// [`io::Result`]: crate::io::Result
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
-    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>>
+    pub unsafe fn spawn_unchecked<'a, F, T>(self, _f: F) -> io::Result<JoinHandle<T>>
     where
         F: FnOnce() -> T,
         F: Send + 'a,
@@ -454,9 +454,11 @@ impl Builder {
         let their_thread = my_thread.clone();
 
         let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
-        let their_packet = my_packet.clone();
+        // let their_packet = my_packet.clone();
 
+        #[cfg(not(target_arch = "bpf"))]
         let output_capture = crate::io::set_output_capture(None);
+        #[cfg(not(target_arch = "bpf"))]
         crate::io::set_output_capture(output_capture.clone());
 
         let main = move || {
@@ -464,12 +466,14 @@ impl Builder {
                 imp::Thread::set_name(name);
             }
 
+            #[cfg(not(target_arch = "bpf"))]
             crate::io::set_output_capture(output_capture);
 
             // SAFETY: the stack guard passed is the one for the current thread.
             // This means the current thread's stack and the new thread's stack
             // are properly set and protected from each other.
             thread_info::set(unsafe { imp::guard::current() }, their_thread);
+            #[cfg(feature = "backtrace")]
             let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
                 crate::sys_common::backtrace::__rust_begin_short_backtrace(f)
             }));
@@ -477,7 +481,7 @@ impl Builder {
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
             // same `JoinInner` as this closure meaning the mutation will be
             // safe (not modify it and affect a value far away).
-            unsafe { *their_packet.get() = Some(try_result) };
+            // unsafe { *their_packet.get() = Some(try_result) };
         };
 
         Ok(JoinHandle(JoinInner {

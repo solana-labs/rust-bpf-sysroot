@@ -3,8 +3,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::cell::{Cell, Ref, RefCell, RefMut, UnsafeCell};
+#[cfg(target_arch = "bpf")]
+use crate::intrinsics::abort;
 use crate::marker::PhantomData;
 use crate::mem;
+#[cfg(not(target_arch = "bpf"))]
 use crate::num::flt2dec;
 use crate::ops::Deref;
 use crate::result;
@@ -258,7 +261,14 @@ pub struct ArgumentV1<'a> {
 static USIZE_MARKER: fn(&usize, &mut Formatter<'_>) -> Result = |ptr, _| {
     // SAFETY: ptr is a reference
     let _v: usize = unsafe { crate::ptr::read_volatile(ptr) };
-    loop {}
+    #[cfg(not(target_arch = "bpf"))]
+    {
+        loop {}
+    }
+    #[cfg(target_arch = "bpf")]
+    {
+        abort()
+    }
 };
 
 impl<'a> ArgumentV1<'a> {
@@ -1386,6 +1396,7 @@ impl<'a> Formatter<'a> {
     /// Takes the formatted parts and applies the padding.
     /// Assumes that the caller already has rendered the parts with required precision,
     /// so that `self.precision` can be ignored.
+    #[cfg(not(target_arch = "bpf"))]
     fn pad_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
         if let Some(mut width) = self.width {
             // for the sign-aware zero padding, we render the sign first and
@@ -1426,6 +1437,7 @@ impl<'a> Formatter<'a> {
         }
     }
 
+    #[cfg(not(target_arch = "bpf"))]
     fn write_formatted_parts(&mut self, formatted: &flt2dec::Formatted<'_>) -> Result {
         fn write_bytes(buf: &mut dyn Write, s: &[u8]) -> Result {
             // SAFETY: This is used for `flt2dec::Part::Num` and `flt2dec::Part::Copy`.

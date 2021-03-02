@@ -1,10 +1,12 @@
 use crate::fmt::{Debug, Display, Formatter, LowerExp, Result, UpperExp};
+#[cfg(not(target_arch = "bpf"))]
 use crate::mem::MaybeUninit;
 use crate::num::flt2dec;
 
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
 fn float_to_decimal_common_exact<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
@@ -27,9 +29,23 @@ where
     fmt.pad_formatted_parts(&formatted)
 }
 
+#[cfg(target_arch = "bpf")]
+fn float_to_decimal_common_exact<T>(
+    _fmt: &mut Formatter<'_>,
+    _num: &T,
+    _sign: flt2dec::Sign,
+    _precision: usize,
+) -> Result
+where
+    T: flt2dec::DecodableFloat,
+{
+    panic!("Not supported");
+}
+
 // Don't inline this so callers that call both this and the above won't wind
 // up using the combined stack space of both functions in some cases.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
 fn float_to_decimal_common_shortest<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
@@ -51,6 +67,19 @@ where
         &mut parts,
     );
     fmt.pad_formatted_parts(&formatted)
+}
+
+#[cfg(target_arch = "bpf")]
+fn float_to_decimal_common_shortest<T>(
+    _fmt: &mut Formatter<'_>,
+    _num: &T,
+    _sign: flt2dec::Sign,
+    _precision: usize,
+) -> Result
+where
+    T: flt2dec::DecodableFloat,
+{
+    panic!("Not supported");
 }
 
 // Common code of floating point Debug and Display.
@@ -81,6 +110,7 @@ where
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
 fn float_to_exponential_common_exact<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
@@ -105,9 +135,24 @@ where
     fmt.pad_formatted_parts(&formatted)
 }
 
+#[cfg(target_arch = "bpf")]
+fn float_to_exponential_common_exact<T>(
+    _fmt: &mut Formatter<'_>,
+    _num: &T,
+    _sign: flt2dec::Sign,
+    _precision: usize,
+    _upper: bool,
+) -> Result
+where
+    T: flt2dec::DecodableFloat,
+{
+    panic!("Not supported");
+}
+
 // Don't inline this so callers that call both this and the above won't wind
 // up using the combined stack space of both functions in some cases.
 #[inline(never)]
+#[cfg(not(target_arch = "bpf"))]
 fn float_to_exponential_common_shortest<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
@@ -130,6 +175,19 @@ where
         &mut parts,
     );
     fmt.pad_formatted_parts(&formatted)
+}
+
+#[cfg(target_arch = "bpf")]
+fn float_to_exponential_common_shortest<T>(
+    _fmt: &mut Formatter<'_>,
+    _num: &T,
+    _sign: flt2dec::Sign,
+    _upper: bool,
+) -> Result
+where
+    T: flt2dec::DecodableFloat,
+{
+    panic!("Not supported");
 }
 
 // Common code of floating point LowerExp and UpperExp.

@@ -1,6 +1,7 @@
 //! Implementation of running at_exit routines
 //!
 //! Documentation can be found on the `rt::at_exit` function.
+#![cfg(not(target_arch = "bpf"))]
 
 use crate::mem;
 use crate::ptr;
@@ -13,7 +14,9 @@ type Queue = Vec<Box<dyn FnOnce()>>;
 // the thread infrastructure to be in place (useful on the borders of
 // initialization/destruction).
 // It is UB to attempt to acquire this mutex reentrantly!
+#[cfg(not(target_arch = "bpf"))]
 static LOCK: StaticMutex = StaticMutex::new();
+#[cfg(not(target_arch = "bpf"))]
 static mut QUEUE: *mut Queue = ptr::null_mut();
 
 const DONE: *mut Queue = 1_usize as *mut _;
@@ -25,23 +28,28 @@ const DONE: *mut Queue = 1_usize as *mut _;
 const ITERS: usize = 10;
 
 unsafe fn init() -> bool {
-    if QUEUE.is_null() {
-        let state: Box<Queue> = box Vec::new();
-        QUEUE = Box::into_raw(state);
-    } else if QUEUE == DONE {
-        // can't re-init after a cleanup
-        return false;
+    #[cfg(not(target_arch = "bpf"))]
+    {
+        if QUEUE.is_null() {
+            let state: Box<Queue> = box Vec::new();
+            QUEUE = Box::into_raw(state);
+        } else if QUEUE == DONE {
+            // can't re-init after a cleanup
+            return false;
+        }
     }
 
     true
 }
 
 pub fn cleanup() {
+    // TODO causes LLVM to crash when compiling for BPF, not needed to BPF anyway for commented out
+    #[cfg(not(target_arch = "bpf"))]
     for i in 1..=ITERS {
         unsafe {
             let queue = {
                 let _guard = LOCK.lock();
-                mem::replace(&mut QUEUE, if i == ITERS { DONE } else { ptr::null_mut() })
+                crate::mem::replace(&mut QUEUE, if i == ITERS { DONE } else { ptr::null_mut() })
             };
 
             // make sure we're not recursively cleaning up
@@ -60,6 +68,7 @@ pub fn cleanup() {
 }
 
 pub fn push(f: Box<dyn FnOnce()>) -> bool {
+    #[cfg(not(target_arch = "bpf"))]
     unsafe {
         let _guard = LOCK.lock();
         if init() {
@@ -70,5 +79,9 @@ pub fn push(f: Box<dyn FnOnce()>) -> bool {
         } else {
             false
         }
+    }
+    #[cfg(target_arch = "bpf")]
+    {
+        true
     }
 }

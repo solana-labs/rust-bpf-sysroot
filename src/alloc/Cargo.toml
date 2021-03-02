@@ -8,11 +8,11 @@ edition = "2018"
 
 [dependencies]
 core = { path = "../core" }
-compiler_builtins = { version = "0.1.10", features = ['rustc-dep-of-std'] }
+compiler_builtins = { path = "../compiler-builtins" }
 
 [dev-dependencies]
-rand = "0.7"
-rand_xorshift = "0.2"
+# rand = "0.7"
+# rand_xorshift = "0.2"
 
 [[test]]
 name = "collectionstests"
@@ -31,5 +31,5 @@ harness = false
 [features]
 compiler-builtins-mem = ['compiler_builtins/mem']
 compiler-builtins-c = ["compiler_builtins/c"]
-compiler-builtins-asm = ["compiler_builtins/asm"]
-compiler-builtins-mangled-names = ["compiler_builtins/mangled-names"]
+# compiler-builtins-asm = ["compiler_builtins/asm"]
+# compiler-builtins-mangled-names = ["compiler_builtins/mangled-names"]

@@ -18,9 +18,6 @@
 #[cfg(test)]
 mod tests;
 
-use crate::sync::Once;
-use crate::sys;
-
 macro_rules! rtabort {
     ($($t:tt)*) => (crate::sys_common::util::abort(format_args!($($t)*)))
 }
@@ -48,6 +45,7 @@ macro_rules! rtunwrap {
 
 pub mod alloc;
 pub mod at_exit_imp;
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod bytestring;
 pub mod condvar;
@@ -73,6 +71,7 @@ pub mod wtf8;
 cfg_if::cfg_if! {
     if #[cfg(any(target_os = "l4re",
                  target_os = "hermit",
+                 target_arch = "bpf",
                  feature = "restricted-std",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
@@ -118,16 +117,18 @@ pub trait FromInner<Inner> {
 /// closure will be run once the main thread exits. Returns `Err` to indicate
 /// that the closure could not be registered, meaning that it is not scheduled
 /// to be run.
+#[cfg(not(target_arch = "bpf"))]
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
     if at_exit_imp::push(Box::new(f)) { Ok(()) } else { Err(()) }
 }
 
 /// One-time runtime cleanup.
+#[cfg(not(target_arch = "bpf"))]
 pub fn cleanup() {
-    static CLEANUP: Once = Once::new();
+    static CLEANUP: crate::sync::Once = crate::sync::Once::new();
     CLEANUP.call_once(|| unsafe {
-        sys::args::cleanup();
-        sys::stack_overflow::cleanup();
+        crate::sys::args::cleanup();
+        crate::sys::stack_overflow::cleanup();
         at_exit_imp::cleanup();
     });
 }

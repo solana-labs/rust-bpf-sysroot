@@ -109,8 +109,9 @@ pub unsafe extern "C" fn __rust_start_panic(_payload: usize) -> u32 {
 pub mod personalities {
     #[rustc_std_internal_symbol]
     #[cfg(not(any(
-        all(target_arch = "wasm32", not(target_os = "emscripten"),),
-        all(target_os = "windows", target_env = "gnu", target_arch = "x86_64",),
+        all(target_arch = "wasm32", not(target_os = "emscripten")),
+        all(target_os = "windows", target_env = "gnu", target_arch = "x86_64"),
+        target_arch = "bpf"
     )))]
     pub extern "C" fn rust_eh_personality() {}
 

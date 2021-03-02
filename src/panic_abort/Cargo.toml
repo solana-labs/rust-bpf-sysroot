@@ -10,7 +10,7 @@ bench = false
 doc = false
 
 [dependencies]
-cfg-if = { version = "0.1.8", features = ['rustc-dep-of-std'] }
+cfg-if = { path = "../cfg-if", features = ['rustc-dep-of-std'] }
 core = { path = "../core" }
 libc = { version = "0.2", default-features = false }
-compiler_builtins = "0.1.0"
+compiler_builtins = { path = "../compiler-builtins" }
