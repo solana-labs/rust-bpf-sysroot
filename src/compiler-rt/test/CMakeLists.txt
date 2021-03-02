@@ -1,6 +1,7 @@
 # Needed for lit support in standalone builds.
 include(AddLLVM)
 
+pythonize_bool(LLVM_ENABLE_EXPENSIVE_CHECKS)
 configure_compiler_rt_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.common.configured.in
   ${CMAKE_CURRENT_BINARY_DIR}/lit.common.configured)
@@ -21,13 +22,10 @@ if(NOT ANDROID)
     # Use LLVM utils and Clang from the same build tree.
     list(APPEND SANITIZER_COMMON_LIT_TEST_DEPS
       clang clang-resource-headers FileCheck count not llvm-config llvm-nm llvm-objdump
-      llvm-readobj llvm-symbolizer compiler-rt-headers sancov)
+      llvm-readelf llvm-readobj llvm-size llvm-symbolizer compiler-rt-headers sancov)
     if (WIN32)
       list(APPEND SANITIZER_COMMON_LIT_TEST_DEPS KillTheDoctor)
     endif()
-  endif()
-  if(CMAKE_HOST_UNIX)
-    list(APPEND SANITIZER_COMMON_LIT_TEST_DEPS SanitizerLintCheck)
   endif()
 endif()
 
@@ -69,6 +67,9 @@ if(COMPILER_RT_CAN_EXECUTE_TESTS)
   endif()
   if(COMPILER_RT_BUILD_PROFILE AND COMPILER_RT_HAS_PROFILE)
     compiler_rt_test_runtime(profile)
+  endif()
+  if(COMPILER_RT_BUILD_MEMPROF)
+    compiler_rt_test_runtime(memprof)
   endif()
   if(COMPILER_RT_BUILD_XRAY)
     compiler_rt_test_runtime(xray)

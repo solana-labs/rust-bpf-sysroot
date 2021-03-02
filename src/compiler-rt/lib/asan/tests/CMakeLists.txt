@@ -31,8 +31,7 @@ set(ASAN_UNITTEST_COMMON_CFLAGS
   -fno-rtti
   -O2
   -Wno-format
-  -Werror=sign-compare
-  -Wno-non-virtual-dtor)
+  -Werror=sign-compare)
 append_list_if(COMPILER_RT_HAS_WVARIADIC_MACROS_FLAG -Wno-variadic-macros ASAN_UNITTEST_COMMON_CFLAGS)
 
 # This will ensure the target linker is used
@@ -56,7 +55,8 @@ list(APPEND ASAN_UNITTEST_COMMON_CFLAGS
   ${COMPILER_RT_ASAN_SHADOW_SCALE_FLAG}
   -DASAN_HAS_BLACKLIST=1
   -DASAN_HAS_EXCEPTIONS=1
-  -DASAN_UAR=0)
+  -DASAN_UAR=0
+  )
 
 if(APPLE)
   list(APPEND ASAN_UNITTEST_COMMON_CFLAGS ${DARWIN_osx_CFLAGS})
@@ -132,27 +132,33 @@ set_target_properties(AsanBenchmarks PROPERTIES FOLDER "Compiler-RT Tests")
 
 set(ASAN_NOINST_TEST_SOURCES
   ${COMPILER_RT_GTEST_SOURCE}
-  asan_fake_stack_test.cc
-  asan_noinst_test.cc
-  asan_test_main.cc)
+  asan_fake_stack_test.cpp
+  asan_noinst_test.cpp
+  asan_test_main.cpp
+  )
 
 set(ASAN_INST_TEST_SOURCES
   ${COMPILER_RT_GTEST_SOURCE}
-  asan_globals_test.cc
-  asan_interface_test.cc
-  asan_internal_interface_test.cc
-  asan_test.cc
-  asan_oob_test.cc
-  asan_mem_test.cc
-  asan_str_test.cc
-  asan_test_main.cc)
+  asan_globals_test.cpp
+  asan_interface_test.cpp
+  asan_internal_interface_test.cpp
+  asan_test.cpp
+  asan_oob_test.cpp
+  asan_mem_test.cpp
+  asan_str_test.cpp
+  asan_test_main.cpp
+  )
 if(APPLE)
-  list(APPEND ASAN_INST_TEST_SOURCES asan_mac_test.cc asan_mac_test_helpers.mm)
+  list(APPEND ASAN_INST_TEST_SOURCES
+    asan_mac_test.cpp
+    asan_mac_test_helpers.mm
+    )
 endif()
 
 set(ASAN_BENCHMARKS_SOURCES
   ${COMPILER_RT_GTEST_SOURCE}
-  asan_benchmarks_test.cc)
+  asan_benchmarks_test.cpp
+  )
 
 function(add_asan_tests arch test_runtime)
   cmake_parse_arguments(TEST "" "KIND" "CFLAGS" ${ARGN})
@@ -280,6 +286,7 @@ if(ANDROID)
       $<TARGET_OBJECTS:RTSanitizerCommonLibc.${arch}>
       $<TARGET_OBJECTS:RTSanitizerCommonCoverage.${arch}>
       $<TARGET_OBJECTS:RTSanitizerCommonSymbolizer.${arch}>
+      $<TARGET_OBJECTS:RTLSanCommon.${arch}>
       $<TARGET_OBJECTS:RTUbsan.${arch}>
       $<TARGET_OBJECTS:RTUbsan_cxx.${arch}>
       ${COMPILER_RT_GTEST_SOURCE}

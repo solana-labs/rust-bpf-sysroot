@@ -2,8 +2,8 @@
 	path = src/compiler-builtins
 	url = https://github.com/solana-labs/compiler-builtins.git
 	branch = v0.7
-[submodule "src/stdarch"]
-	path = src/stdarch
+[submodule "library/stdarch"]
+	path = library/stdarch
 	url = https://github.com/rust-lang/stdarch.git
 [submodule "src/hashbrown"]
 	path = src/hashbrown
