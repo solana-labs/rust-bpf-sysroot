@@ -67,7 +67,9 @@ public:
 
   void ExecuteCallback(const uint8_t *Data, size_t Size);
   bool RunOne(const uint8_t *Data, size_t Size, bool MayDeleteFile = false,
-              InputInfo *II = nullptr, bool *FoundUniqFeatures = nullptr);
+              InputInfo *II = nullptr, bool ForceAddToCorpus = false,
+              bool *FoundUniqFeatures = nullptr);
+  void TPCUpdateObservedPCs();
 
   // Merge Corpora[1:] into Corpora[0].
   void Merge(const Vector<std::string> &Corpora);
@@ -98,7 +100,8 @@ private:
   void ReportNewCoverage(InputInfo *II, const Unit &U);
   void PrintPulseAndReportSlowInput(const uint8_t *Data, size_t Size);
   void WriteUnitToFileWithPrefix(const Unit &U, const char *Prefix);
-  void PrintStats(const char *Where, const char *End = "\n", size_t Units = 0);
+  void PrintStats(const char *Where, const char *End = "\n", size_t Units = 0,
+                  size_t Features = 0);
   void PrintStatusForNewUnit(const Unit &U, const char *Text);
   void CheckExitOnSrcPosOrItem();
 

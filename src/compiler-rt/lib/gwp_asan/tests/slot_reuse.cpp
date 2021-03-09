@@ -1,4 +1,4 @@
-//===-- slot_reuse.cc -------------------------------------------*- C++ -*-===//
+//===-- slot_reuse.cpp ------------------------------------------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -7,6 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "gwp_asan/tests/harness.h"
+
+#include <set>
 
 void singleByteGoodAllocDealloc(gwp_asan::GuardedPoolAllocator *GPA) {
   void *Ptr = GPA->allocate(1);

@@ -9,28 +9,48 @@
 #ifndef GWP_ASAN_TESTS_HARNESS_H_
 #define GWP_ASAN_TESTS_HARNESS_H_
 
-#include "gtest/gtest.h"
+#include <stdarg.h>
 
-// Include sanitizer_common first as gwp_asan/guarded_pool_allocator.h
-// transiently includes definitions.h, which overwrites some of the definitions
-// in sanitizer_common.
-#include "sanitizer_common/sanitizer_common.h"
+#if defined(__Fuchsia__)
+#include <zxtest/zxtest.h>
+using Test = ::zxtest::Test;
+#else
+#include "gtest/gtest.h"
+using Test = ::testing::Test;
+#endif
 
 #include "gwp_asan/guarded_pool_allocator.h"
 #include "gwp_asan/optional/backtrace.h"
-#include "gwp_asan/optional/options_parser.h"
+#include "gwp_asan/optional/printf.h"
+#include "gwp_asan/optional/segv_handler.h"
 #include "gwp_asan/options.h"
 
-class DefaultGuardedPoolAllocator : public ::testing::Test {
+namespace gwp_asan {
+namespace test {
+// This printf-function getter allows other platforms (e.g. Android) to define
+// their own signal-safe Printf function. In LLVM, we use
+// `optional/printf_sanitizer_common.cpp` which supplies the __sanitizer::Printf
+// for this purpose.
+Printf_t getPrintfFunction();
+
+// First call returns true, all the following calls return false.
+bool OnlyOnce();
+
+}; // namespace test
+}; // namespace gwp_asan
+
+class DefaultGuardedPoolAllocator : public Test {
 public:
-  DefaultGuardedPoolAllocator() {
+  void SetUp() override {
     gwp_asan::options::Options Opts;
     Opts.setDefaults();
     MaxSimultaneousAllocations = Opts.MaxSimultaneousAllocations;
 
-    Opts.Printf = __sanitizer::Printf;
+    Opts.InstallForkHandlers = gwp_asan::test::OnlyOnce();
     GPA.init(Opts);
   }
+
+  void TearDown() override { GPA.uninitTestOnly(); }
 
 protected:
   gwp_asan::GuardedPoolAllocator GPA;
@@ -38,7 +58,7 @@ protected:
       MaxSimultaneousAllocations;
 };
 
-class CustomGuardedPoolAllocator : public ::testing::Test {
+class CustomGuardedPoolAllocator : public Test {
 public:
   void
   InitNumSlots(decltype(gwp_asan::options::Options::MaxSimultaneousAllocations)
@@ -49,9 +69,11 @@ public:
     Opts.MaxSimultaneousAllocations = MaxSimultaneousAllocationsArg;
     MaxSimultaneousAllocations = MaxSimultaneousAllocationsArg;
 
-    Opts.Printf = __sanitizer::Printf;
+    Opts.InstallForkHandlers = gwp_asan::test::OnlyOnce();
     GPA.init(Opts);
   }
+
+  void TearDown() override { GPA.uninitTestOnly(); }
 
 protected:
   gwp_asan::GuardedPoolAllocator GPA;
@@ -59,21 +81,25 @@ protected:
       MaxSimultaneousAllocations;
 };
 
-class BacktraceGuardedPoolAllocator : public ::testing::Test {
+class BacktraceGuardedPoolAllocator : public Test {
 public:
-  BacktraceGuardedPoolAllocator() {
-    // Call initOptions to initialise the internal sanitizer_common flags. These
-    // flags are referenced by the sanitizer_common unwinder, and if left
-    // uninitialised, they'll unintentionally crash the program.
-    gwp_asan::options::initOptions();
-
+  void SetUp() override {
     gwp_asan::options::Options Opts;
     Opts.setDefaults();
 
-    Opts.Printf = __sanitizer::Printf;
-    Opts.Backtrace = gwp_asan::options::getBacktraceFunction();
-    Opts.PrintBacktrace = gwp_asan::options::getPrintBacktraceFunction();
+    Opts.Backtrace = gwp_asan::backtrace::getBacktraceFunction();
+    Opts.InstallForkHandlers = gwp_asan::test::OnlyOnce();
     GPA.init(Opts);
+
+    gwp_asan::segv_handler::installSignalHandlers(
+        &GPA, gwp_asan::test::getPrintfFunction(),
+        gwp_asan::backtrace::getPrintBacktraceFunction(),
+        gwp_asan::backtrace::getSegvBacktraceFunction());
+  }
+
+  void TearDown() override {
+    GPA.uninitTestOnly();
+    gwp_asan::segv_handler::uninstallSignalHandlers();
   }
 
 protected:

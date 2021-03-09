@@ -17,7 +17,7 @@
 #include "sanitizer_common/sanitizer_internal_defs.h"
 
 #if !SANITIZER_LINUX && !SANITIZER_FREEBSD && !SANITIZER_MAC && \
-    !SANITIZER_NETBSD && !SANITIZER_OPENBSD && !SANITIZER_WINDOWS && \
+    !SANITIZER_NETBSD && !SANITIZER_WINDOWS && \
     !SANITIZER_FUCHSIA && !SANITIZER_RTEMS && !SANITIZER_SOLARIS
 # error "Interception doesn't work on this operating system."
 #endif
@@ -272,16 +272,16 @@ const interpose_substitution substitution_##func_name[] \
 // INTERCEPT_FUNCTION macro, only its name.
 namespace __interception {
 #if defined(_WIN64)
-typedef unsigned long long uptr;  // NOLINT
+typedef unsigned long long uptr;
 #else
-typedef unsigned long uptr;  // NOLINT
+typedef unsigned long uptr;
 #endif  // _WIN64
 }  // namespace __interception
 
 #define INCLUDED_FROM_INTERCEPTION_LIB
 
 #if SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD || \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS
+    SANITIZER_SOLARIS
 
 # include "interception_linux.h"
 # define INTERCEPT_FUNCTION(func) INTERCEPT_FUNCTION_LINUX_OR_FREEBSD(func)

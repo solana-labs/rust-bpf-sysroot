@@ -28,7 +28,6 @@ config.test_format = lit.formats.ShTest(execute_external)
 # LeakSanitizer is not supported on OSX or Windows right now.
 if (sys.platform.startswith('darwin') or
     sys.platform.startswith('freebsd') or
-    sys.platform.startswith('netbsd') or
     sys.platform.startswith('win')):
   lit_config.note('lsan feature unavailable')
 else:
@@ -61,6 +60,8 @@ else:
 config.substitutions.append(('%build_dir', config.cmake_binary_dir))
 libfuzzer_src_root = os.path.join(config.compiler_rt_src_root, "lib", "fuzzer")
 config.substitutions.append(('%libfuzzer_src', libfuzzer_src_root))
+
+config.substitutions.append(('%python', '"%s"' % (sys.executable)))
 
 def generate_compiler_cmd(is_cpp=True, fuzzer_enabled=True, msan_enabled=False):
   compiler_cmd = config.clang
@@ -116,3 +117,6 @@ config.substitutions.append(('%env_asan_opts=',
 
 if not config.parallelism_group:
   config.parallelism_group = 'shadow-memory'
+
+if config.host_os == 'NetBSD':
+  config.substitutions.insert(0, ('%run', config.netbsd_noaslr_prefix))

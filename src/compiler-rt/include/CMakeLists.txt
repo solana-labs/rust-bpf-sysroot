@@ -13,8 +13,18 @@ if (COMPILER_RT_BUILD_SANITIZERS)
     sanitizer/scudo_interface.h
     sanitizer/tsan_interface.h
     sanitizer/tsan_interface_atomic.h
+    sanitizer/ubsan_interface.h
+    )
+  set(FUZZER_HEADERS
+    fuzzer/FuzzedDataProvider.h
     )
 endif(COMPILER_RT_BUILD_SANITIZERS)
+
+if (COMPILER_RT_BUILD_MEMPROF)
+  set(MEMPROF_HEADERS
+    sanitizer/memprof_interface.h
+    )
+endif(COMPILER_RT_BUILD_MEMPROF)
 
 if (COMPILER_RT_BUILD_XRAY)
   set(XRAY_HEADERS
@@ -24,9 +34,18 @@ if (COMPILER_RT_BUILD_XRAY)
     )
 endif(COMPILER_RT_BUILD_XRAY)
 
+if (COMPILER_RT_BUILD_PROFILE)
+  set(PROFILE_HEADERS
+    profile/InstrProfData.inc
+    )
+endif(COMPILER_RT_BUILD_PROFILE)
+
 set(COMPILER_RT_HEADERS
   ${SANITIZER_HEADERS}
-  ${XRAY_HEADERS})
+  ${FUZZER_HEADERS}
+  ${MEMPROF_HEADERS}
+  ${XRAY_HEADERS}
+  ${PROFILE_HEADERS})
 
 set(output_dir ${COMPILER_RT_OUTPUT_DIR}/include)
 
@@ -51,11 +70,21 @@ install(FILES ${SANITIZER_HEADERS}
   COMPONENT compiler-rt-headers
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
   DESTINATION ${COMPILER_RT_INSTALL_PATH}/include/sanitizer)
+# Install fuzzer headers.
+install(FILES ${FUZZER_HEADERS}
+  COMPONENT compiler-rt-headers
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+  DESTINATION ${COMPILER_RT_INSTALL_PATH}/include/fuzzer)
 # Install xray headers.
 install(FILES ${XRAY_HEADERS}
   COMPONENT compiler-rt-headers
   PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
   DESTINATION ${COMPILER_RT_INSTALL_PATH}/include/xray)
+# Install profile headers.
+install(FILES ${PROFILE_HEADERS}
+  COMPONENT compiler-rt-headers
+  PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+  DESTINATION ${COMPILER_RT_INSTALL_PATH}/include/profile)
 
 if (NOT CMAKE_CONFIGURATION_TYPES) # don't add this for IDEs.
   add_custom_target(install-compiler-rt-headers

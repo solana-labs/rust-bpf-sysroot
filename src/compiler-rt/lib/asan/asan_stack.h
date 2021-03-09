@@ -8,7 +8,7 @@
 //
 // This file is a part of AddressSanitizer, an address sanity checker.
 //
-// ASan-private header for asan_stack.cc.
+// ASan-private header for asan_stack.cpp.
 //===----------------------------------------------------------------------===//
 
 #ifndef ASAN_STACK_H
@@ -49,11 +49,6 @@ u32 GetMallocContextSize();
 #define GET_STACK_TRACE_FATAL(pc, bp)              \
   BufferedStackTrace stack;                        \
   stack.Unwind(pc, bp, nullptr,                    \
-               common_flags()->fast_unwind_on_fatal)
-
-#define GET_STACK_TRACE_SIGNAL(sig)                                        \
-  BufferedStackTrace stack;                                                \
-  stack.Unwind((sig).pc, (sig).bp, (sig).context,                          \
                common_flags()->fast_unwind_on_fatal)
 
 #define GET_STACK_TRACE_FATAL_HERE                                \
