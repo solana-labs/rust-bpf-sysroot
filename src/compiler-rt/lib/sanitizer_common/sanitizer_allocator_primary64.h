@@ -19,7 +19,7 @@ template<class SizeClassAllocator> struct SizeClassAllocator64LocalCache;
 // The template parameter Params is a class containing the actual parameters.
 //
 // Space: a portion of address space of kSpaceSize bytes starting at SpaceBeg.
-// If kSpaceBeg is ~0 then SpaceBeg is chosen dynamically my mmap.
+// If kSpaceBeg is ~0 then SpaceBeg is chosen dynamically by mmap.
 // Otherwise SpaceBeg=kSpaceBeg (fixed address).
 // kSpaceSize is a power of two.
 // At the beginning the entire space is mprotect-ed, then small parts of it
@@ -72,11 +72,15 @@ class SizeClassAllocator64 {
   void Init(s32 release_to_os_interval_ms) {
     uptr TotalSpaceSize = kSpaceSize + AdditionalSize();
     if (kUsingConstantSpaceBeg) {
+      CHECK(IsAligned(kSpaceBeg, SizeClassMap::kMaxSize));
       CHECK_EQ(kSpaceBeg, address_range.Init(TotalSpaceSize,
                                              PrimaryAllocatorName, kSpaceBeg));
     } else {
-      NonConstSpaceBeg = address_range.Init(TotalSpaceSize,
-                                            PrimaryAllocatorName);
+      // Combined allocator expects that an 2^N allocation is always aligned to
+      // 2^N. For this to work, the start of the space needs to be aligned as
+      // high as the largest size class (which also needs to be a power of 2).
+      NonConstSpaceBeg = address_range.InitAligned(
+          TotalSpaceSize, SizeClassMap::kMaxSize, PrimaryAllocatorName);
       CHECK_NE(NonConstSpaceBeg, ~(uptr)0);
     }
     SetReleaseToOSIntervalMs(release_to_os_interval_ms);
@@ -140,6 +144,17 @@ class SizeClassAllocator64 {
     CompactPtrT *free_array = GetFreeArray(region_beg);
 
     BlockingMutexLock l(&region->mutex);
+#if SANITIZER_WINDOWS
+    /* On Windows unmapping of memory during __sanitizer_purge_allocator is
+    explicit and immediate, so unmapped regions must be explicitly mapped back
+    in when they are accessed again. */
+    if (region->rtoi.last_released_bytes > 0) {
+      MmapFixedOrDie(region_beg, region->mapped_user,
+                                      "SizeClassAllocator: region data");
+      region->rtoi.n_freed_at_last_release = 0;
+      region->rtoi.last_released_bytes = 0;
+    }
+#endif
     if (UNLIKELY(region->num_freed_chunks < n_chunks)) {
       if (UNLIKELY(!PopulateFreeArray(stat, class_id, region,
                                       n_chunks - region->num_freed_chunks)))
@@ -182,13 +197,13 @@ class SizeClassAllocator64 {
 
   void *GetBlockBegin(const void *p) {
     uptr class_id = GetSizeClass(p);
+    if (class_id >= kNumClasses) return nullptr;
     uptr size = ClassIdToSize(class_id);
     if (!size) return nullptr;
     uptr chunk_idx = GetChunkIdx((uptr)p, size);
     uptr reg_beg = GetRegionBegin(p);
     uptr beg = chunk_idx * size;
     uptr next_beg = beg + size;
-    if (class_id >= kNumClasses) return nullptr;
     const RegionInfo *region = AddressSpaceView::Load(GetRegionInfo(class_id));
     if (region->mapped_user >= next_beg)
       return reinterpret_cast<void*>(reg_beg + beg);
@@ -203,6 +218,7 @@ class SizeClassAllocator64 {
   static uptr ClassID(uptr size) { return SizeClassMap::ClassID(size); }
 
   void *GetMetaData(const void *p) {
+    CHECK(kMetadataSize);
     uptr class_id = GetSizeClass(p);
     uptr size = ClassIdToSize(class_id);
     uptr chunk_idx = GetChunkIdx(reinterpret_cast<uptr>(p), size);
@@ -220,7 +236,7 @@ class SizeClassAllocator64 {
 
   // Test-only.
   void TestOnlyUnmap() {
-    UnmapWithCallbackOrDie(SpaceBeg(), kSpaceSize + AdditionalSize());
+    UnmapWithCallbackOrDie((uptr)address_range.base(), address_range.size());
   }
 
   static void FillMemoryProfile(uptr start, uptr rss, bool file, uptr *stats,
@@ -355,8 +371,7 @@ class SizeClassAllocator64 {
     }
     ~PackedCounterArray() {
       if (buffer) {
-        memory_mapper->UnmapPackedCounterArrayBuffer(
-            reinterpret_cast<uptr>(buffer), buffer_size);
+        memory_mapper->UnmapPackedCounterArrayBuffer(buffer, buffer_size);
       }
     }
 
@@ -787,17 +802,16 @@ class SizeClassAllocator64 {
       return released_bytes;
     }
 
-    uptr MapPackedCounterArrayBuffer(uptr buffer_size) {
+    void *MapPackedCounterArrayBuffer(uptr buffer_size) {
       // TODO(alekseyshl): The idea to explore is to check if we have enough
       // space between num_freed_chunks*sizeof(CompactPtrT) and
       // mapped_free_array to fit buffer_size bytes and use that space instead
       // of mapping a temporary one.
-      return reinterpret_cast<uptr>(
-          MmapOrDieOnFatalError(buffer_size, "ReleaseToOSPageCounters"));
+      return MmapOrDieOnFatalError(buffer_size, "ReleaseToOSPageCounters");
     }
 
-    void UnmapPackedCounterArrayBuffer(uptr buffer, uptr buffer_size) {
-      UnmapOrDie(reinterpret_cast<void *>(buffer), buffer_size);
+    void UnmapPackedCounterArrayBuffer(void *buffer, uptr buffer_size) {
+      UnmapOrDie(buffer, buffer_size);
     }
 
     // Releases [from, to) range of pages back to OS.
