@@ -130,7 +130,6 @@ pub mod decoder;
 pub mod estimator;
 
 /// Digit-generation algorithms.
-#[cfg(not(target_arch = "bpf"))]
 pub mod strategy {
     pub mod dragon;
     pub mod grisu;
