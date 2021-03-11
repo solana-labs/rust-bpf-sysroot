@@ -153,6 +153,6 @@ export XARGO_HOME="$PWD/dependencies/xargo"
 export XARGO_RUST_SRC="$PWD/../src"
 export RUST_COMPILER_RT_ROOT="$PWD/../src/compiler-rt"
 
-xargo build --target bpfel-unknown-unknown --release
+$PWD/dependencies/bin/xargo build --target bpfel-unknown-unknown --release
 
 { { set +x; } 2>/dev/null; echo Success; }
