@@ -14,24 +14,62 @@ else
 fi
 
 download() {
-  declare url=$1
-  declare filename=$2
-  declare progress=$3
-
-  declare args=(
+  declare url="$1/$2/$3"
+  declare filename=$3
+  declare wget_args=(
     "$url" -O "$filename"
-    "--progress=dot:$progress"
+    "--progress=dot:giga"
     "--retry-connrefused"
     "--read-timeout=30"
   )
-  wget "${args[@]}"
+  declare curl_args=(
+    -L "$url" -o "$filename"
+  )
+  if hash wget 2>/dev/null; then
+    wget_or_curl="wget ${wget_args[*]}"
+  elif hash curl 2>/dev/null; then
+    wget_or_curl="curl ${curl_args[*]}"
+  else
+    echo "Error: Neither curl nor wget were found" >&2
+    return 1
+  fi
+
+  set -x
+  if $wget_or_curl; then
+    tar --strip-components 1 -jxf "$filename" || return 1
+    { set +x; } 2>/dev/null
+    rm -rf "$filename"
+    return 0
+  fi
+  return 1
 }
 
-if [[ "$(uname)" = Darwin ]]; then
-  machine=osx
-else
-  machine=linux
-fi
+get() {
+  declare version=$1
+  declare dirname=$2
+  declare job=$3
+  declare cache_root=~/.cache/solana
+  declare cache_dirname="$cache_root/$version/$dirname"
+  declare cache_partial_dirname="$cache_dirname"_partial
+
+  if [[ -r $cache_dirname ]]; then
+    ln -sf "$cache_dirname" "$dirname" || return 1
+    return 0
+  fi
+
+  rm -rf "$cache_partial_dirname" || return 1
+  mkdir -p "$cache_partial_dirname" || return 1
+  pushd "$cache_partial_dirname"
+
+  if $job; then
+    popd
+    mv "$cache_partial_dirname" "$cache_dirname" || return 1
+    ln -sf "$cache_dirname" "$dirname" || return 1
+    return 0
+  fi
+  popd
+  return 1
+}
 
 # Install xargo
 version=0.3.22
@@ -53,67 +91,32 @@ if [[ ! -e xargo-$version.md ]] || [[ ! -x bin/xargo ]]; then
   ./bin/xargo --version >xargo-$version.md 2>&1
 fi
 
-# Install LLVM
-version=v0.0.15
-if [[ ! -f llvm-native-$machine-$version.md ]]; then
+# Install bpf-tools
+version=v1.1
+if [[ ! -e bpf-tools-$version.md || ! -e bpf-tools ]]; then
   (
-    filename=solana-llvm-$machine.tar.bz2
-
-    set -ex
-    rm -rf llvm-native*
-    rm -rf xargo
-    mkdir -p llvm-native
-    cd llvm-native
-
-    base=https://github.com/solana-labs/llvm-builder/releases
-    download $base/download/$version/$filename $filename giga
-    tar -jxf $filename
-    rm -rf $filename
-
-    echo "$base/tag/$version" > ../llvm-native-$machine-$version.md
-  )
-  exitcode=$?
-  if [[ $exitcode -ne 0 ]]; then
-    rm -rf llvm-native
-    exit 1
-  fi
-fi
-
-# Install Rust-BPF
-version=v0.2.5
-if [[ ! -f rust-bpf-$machine-$version.md ]]; then
-  (
-    filename=solana-rust-bpf-$machine.tar.bz2
-
-    set -ex
-    rm -rf rust-bpf
-    rm -rf rust-bpf-$machine-*
-    rm -rf xargo
-    mkdir -p rust-bpf
-    pushd rust-bpf
-
-    base=https://github.com/solana-labs/rust-bpf-builder/releases
-    download $base/download/$version/$filename $filename giga
-    tar -jxf $filename
-    rm -rf $filename
-    popd
-
-    set -ex
-    ./rust-bpf/bin/rustc --print sysroot
-
-    set +e
-    rustup toolchain uninstall bpfsysroot
     set -e
-    rustup toolchain link bpfsysroot rust-bpf
-
-    echo "$base/tag/$version" > rust-bpf-$machine-$version.md
+    rm -rf bpf-tools*
+    rm -rf xargo
+    job="download \
+           https://github.com/solana-labs/bpf-tools/releases/download \
+           $version \
+           solana-bpf-tools-$machine.tar.bz2 \
+           bpf-tools"
+    get $version bpf-tools "$job"
   )
   exitcode=$?
   if [[ $exitcode -ne 0 ]]; then
-    rm -rf rust-bpf
     exit 1
   fi
+  touch bpf-tools-$version.md
 fi
+set -ex
+./bpf-tools/rust/bin/rustc --print sysroot
+set +e
+rustup toolchain uninstall bpf
+set -e
+rustup toolchain link bpf bpf-tools/rust
 
 set -ex
 
@@ -122,13 +125,13 @@ cd ..
 git submodule update --init --recursive
 
 # Use the SDK's version of llvm to build the compiler-builtins for BPF
-export CC="$PWD/dependencies/llvm-native/bin/clang"
-export AR="$PWD/dependencies/llvm-native/bin/llvm-ar"
-export OBJDUMP="$PWD/dependencies/llvm-native/bin/llvm-objdump"
-export OBJCOPY="$PWD/dependencies/llvm-native/bin/llvm-objcopy"
+export CC="$PWD/dependencies/bpf-tools/llvm/bin/clang"
+export AR="$PWD/dependencies/bpf-tools/llvm/bin/llvm-ar"
+export OBJDUMP="$PWD/dependencies/bpf-tools/llvm/bin/llvm-objdump"
+export OBJCOPY="$PWD/dependencies/bpf-tools/llvm/bin/llvm-objcopy"
 
 # Use the SDK's version of Rust to build for BPF
-export RUSTUP_TOOLCHAIN=bpfsysroot
+export RUSTUP_TOOLCHAIN=bpf
 export RUSTFLAGS="
     -C lto=no \
     -C opt-level=2 \
@@ -136,9 +139,9 @@ export RUSTFLAGS="
     -C link-arg=-Tbpf.ld \
     -C link-arg=--Bdynamic \
     -C link-arg=-shared \
+    -C link-arg=--threads=1 \
     -C link-arg=--entry=entrypoint \
-    -C link-arg=-no-threads \
-    -C linker=dependencies/llvm-native/bin/ld.lld"
+    -C linker=dependencies/bpf-tools/llvm/bin/ld.lld"
 
 # CARGO may be set if run from within cargo, causing
 # incompatibilities between cargo and xargo versions
@@ -149,7 +152,6 @@ export XARGO_TARGET=bpfel-unknown-unknown
 export XARGO_HOME="$PWD/dependencies/xargo"
 export XARGO_RUST_SRC="$PWD/../src"
 export RUST_COMPILER_RT_ROOT="$PWD/../src/compiler-rt"
-
 
 xargo build --target bpfel-unknown-unknown --release
 
