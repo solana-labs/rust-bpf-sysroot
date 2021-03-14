@@ -91,8 +91,15 @@ if [[ ! -e xargo-$version.md ]] || [[ ! -x bin/xargo ]]; then
   ./bin/xargo --version >xargo-$version.md 2>&1
 fi
 
-# Install bpf-tools
+# Install or set up bpf-tools
 version=v1.1
+if [[ $# > 0 ]] && [[ -d ${1}/llvm ]] && [[ -d ${1}/stage1 ]]; then
+    rm -rf bpf-tools
+    mkdir bpf-tools
+    ln -s ${1}/llvm bpf-tools/llvm
+    ln -s ${1}/stage1 bpf-tools/rust
+    touch bpf-tools-$version.md
+fi
 if [[ ! -e bpf-tools-$version.md || ! -e bpf-tools ]]; then
   (
     set -e
@@ -121,8 +128,6 @@ rustup toolchain link bpf bpf-tools/rust
 set -ex
 
 cd ..
-
-git submodule update --init --recursive
 
 # Use the SDK's version of llvm to build the compiler-builtins for BPF
 export CC="$PWD/dependencies/bpf-tools/llvm/bin/clang"
