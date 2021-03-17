@@ -94,7 +94,7 @@ if [[ ! -e xargo-$version.md ]] || [[ ! -x bin/xargo ]]; then
 fi
 
 # Install or set up bpf-tools
-version=v1.1
+version=v1.2
 if [[ $# > 0 ]] && [[ -d ${1}/llvm ]] && [[ -d ${1}/stage1 ]]; then
     rm -rf bpf-tools
     mkdir bpf-tools
